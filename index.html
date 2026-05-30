@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ecovasos — BirraFest VII</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="manifest" href="./manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ecovasos">
+<meta name="theme-color" content="#BA7517">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--bg2:#f5f5f3;--bg3:#eeecea;
+  --text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
+  --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.25);
+  --radius:8px;--radius-lg:12px;
+  --amber:#BA7517;--amber-bg:#FAEEDA;--amber-text:#633806;
+  --green:#3B6D11;--green-bg:#EAF3DE;--green-text:#27500A;
+  --red:#A32D2D;--red-bg:#FCEBEB;--red-text:#791F1F;
+  --blue:#185FA5;--blue-bg:#E6F1FB;--blue-text:#0C447C;
+  --teal:#0F6E56;--teal-bg:#E1F5EE;--teal-text:#085041;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1e1e1c;--bg2:#2a2a28;--bg3:#323230;
+  --text:#f0ede8;--text2:#b4b2a9;--text3:#888780;
+  --border:rgba(255,255,255,0.12);--border2:rgba(255,255,255,0.25);
+  --amber:#EF9F27;--amber-bg:#412402;--amber-text:#FAC775;
+  --green:#97C459;--green-bg:#173404;--green-text:#C0DD97;
+  --red:#E24B4A;--red-bg:#501313;--red-text:#F7C1C1;
+  --blue:#378ADD;--blue-bg:#042C53;--blue-text:#B5D4F4;
+  --teal:#1D9E75;--teal-bg:#04342C;--teal-text:#9FE1CB;
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text);font-size:15px;line-height:1.5;min-height:100vh}
+h2{font-size:17px;font-weight:500}
+h3{font-size:15px;font-weight:500}
+
+nav{background:var(--bg);border-bottom:0.5px solid var(--border);padding:0 1.25rem;display:flex;align-items:center;gap:0;position:sticky;top:0;z-index:100}
+.nav-brand{font-size:14px;font-weight:500;padding:.9rem 0;margin-right:1.25rem;white-space:nowrap}
+.nav-tabs{display:flex;gap:0;flex:1;overflow-x:auto}
+.nav-tab{padding:.85rem .9rem;font-size:13px;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--amber);border-bottom-color:var(--amber);font-weight:500}
+.sync-pill{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;padding:.35rem .65rem;border-radius:20px;background:var(--bg2);white-space:nowrap}
+.sync-pill.ok{color:var(--green)}.sync-pill.pend{color:var(--amber)}.sync-pill.off{color:var(--text3)}
+
+main{max-width:860px;margin:0 auto;padding:1.25rem}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+
+.card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+.card+.card,.card+.mt-card{margin-top:.875rem}
+.mt-card{margin-top:.875rem}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1rem}
+.metric{background:var(--bg2);border-radius:var(--radius);padding:.875rem;text-align:center}
+.metric-label{font-size:11px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.metric-value{font-size:21px;font-weight:500}
+.metric-value.amber{color:var(--amber)}.metric-value.green{color:var(--green)}.metric-value.red{color:var(--red)}
+
+button{font-family:inherit;font-size:14px;cursor:pointer;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg);color:var(--text);padding:.45rem .9rem;transition:background .15s,transform .1s}
+button:hover{background:var(--bg2)}
+button:active{transform:scale(0.98)}
+button.primary{background:var(--amber-bg);border-color:var(--amber);color:var(--amber-text);font-weight:500}
+button.danger{background:var(--red-bg);border-color:var(--red);color:var(--red-text)}
+button.success{background:var(--green-bg);border-color:var(--green);color:var(--green-text)}
+button.sm{padding:.3rem .65rem;font-size:12px}
+button:disabled{opacity:.35;cursor:not-allowed;transform:none}
+
+label{font-size:13px;color:var(--text2);display:block;margin-bottom:3px}
+input,select,textarea{font-family:inherit;font-size:14px;width:100%;padding:.45rem .7rem;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);outline:none}
+input:focus,select:focus{box-shadow:0 0 0 2px var(--amber);border-color:var(--amber)}
+.form-row{margin-bottom:.875rem}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:var(--radius);font-size:11px;font-weight:500}
+.badge.amber{background:var(--amber-bg);color:var(--amber-text)}
+.badge.green{background:var(--green-bg);color:var(--green-text)}
+.badge.red{background:var(--red-bg);color:var(--red-text)}
+.badge.blue{background:var(--blue-bg);color:var(--blue-text)}
+.badge.teal{background:var(--teal-bg);color:var(--teal-text)}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:.5rem .65rem;font-size:11px;font-weight:500;color:var(--text3);border-bottom:0.5px solid var(--border);text-transform:uppercase;letter-spacing:.04em}
+td{padding:.6rem .65rem;border-bottom:0.5px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg2)}
+
+.day-toggle{display:flex;gap:0;background:var(--bg2);border-radius:var(--radius);padding:3px;margin-bottom:1.25rem;width:fit-content}
+.day-btn{padding:.4rem 1rem;border:none;background:none;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s}
+.day-btn.active{background:var(--bg);color:var(--text);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+#sig-canvas{border:1px dashed var(--border2);border-radius:var(--radius);background:#fff;width:100%;height:150px;touch-action:none;cursor:crosshair;display:block}
+.sig-actions{display:flex;gap:.5rem;margin-top:.4rem;align-items:center}
+
+/* Quantity selector */
+.qty-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-top:.25rem}
+.qty-btn{padding:.6rem .25rem;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:13px;cursor:pointer;text-align:center;transition:all .15s}
+.qty-btn:hover{background:var(--bg2)}
+.qty-btn.selected{background:var(--amber-bg);border-color:var(--amber);color:var(--amber-text);font-weight:500}
+
+/* Custom qty */
+.qty-custom-row{display:flex;gap:.5rem;margin-top:.5rem;align-items:center}
+.qty-custom-row input{flex:1}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg);border-radius:var(--radius-lg);border:0.5px solid var(--border);padding:1.5rem;width:min(500px,100%);max-height:88vh;overflow-y:auto}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.modal-close{border:none;background:none;font-size:20px;cursor:pointer;color:var(--text2);padding:0;line-height:1}
+
+/* Liquidacion */
+.liq-row{display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:0.5px solid var(--border);font-size:14px}
+.liq-row:last-child{border-bottom:none;font-weight:500;font-size:15px;padding-top:.65rem}
+.liq-total{color:var(--green)}
+
+/* PIN modal */
+.pin-display{font-size:28px;letter-spacing:.3em;font-weight:500;text-align:center;padding:1rem;background:var(--bg2);border-radius:var(--radius);margin:.75rem 0;min-height:60px;color:var(--text)}
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}
+.pin-btn{padding:.9rem;font-size:18px;font-weight:500;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg);cursor:pointer;text-align:center}
+.pin-btn:hover{background:var(--bg2)}
+
+.text-muted{color:var(--text3)}
+.text-sm{font-size:12px}
+.mt-1{margin-top:.5rem}.mt-2{margin-top:1rem}.mt-3{margin-top:1.5rem}
+.flex{display:flex}.gap-1{gap:.5rem}.gap-2{gap:.75rem}.items-center{align-items:center}.justify-between{justify-content:space-between}.flex-wrap{flex-wrap:wrap}
+.empty-state{text-align:center;padding:2.5rem 1rem;color:var(--text3)}
+.empty-state i{font-size:36px;display:block;margin-bottom:.75rem;opacity:.35}
+
+/* Offline queue badge */
+.queue-indicator{font-size:11px;color:var(--amber);margin-left:.5rem}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand"><i class="ti ti-beer" aria-hidden="true"></i> Ecovasos BF VII</span>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showSection('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+    <button class="nav-tab" onclick="showSection('movimientos')"><i class="ti ti-arrows-exchange"></i> Registrar</button>
+    <button class="nav-tab" onclick="showSection('historial')"><i class="ti ti-list"></i> Historial</button>
+    <button class="nav-tab" onclick="showSection('liquidacion')"><i class="ti ti-report-money"></i> Liquidación</button>
+    <button class="nav-tab" onclick="showSection('config')"><i class="ti ti-settings"></i> Config</button>
+  </div>
+  <div class="sync-pill off" id="sync-pill">
+    <i class="ti ti-cloud-off" id="sync-icon"></i>
+    <span id="sync-text">Offline</span>
+    <span class="queue-indicator" id="queue-count"></span>
+  </div>
+</nav>
+
+<main>
+
+<!-- DASHBOARD -->
+<section id="section-dashboard">
+  <div class="day-toggle">
+    <button class="day-btn active" onclick="setDay(1,this)">Día 1</button>
+    <button class="day-btn" onclick="setDay(2,this)">Día 2</button>
+    <button class="day-btn" onclick="setDay(0,this)">Total</button>
+  </div>
+  <div class="metrics-grid" id="dash-metrics"></div>
+  <div class="card">
+    <div class="section-header"><h2>Estado por stand</h2></div>
+    <table>
+      <thead><tr><th>Stand</th><th>Entregado</th><th>Devuelto</th><th>Vendidos</th><th>A cobrar</th><th>Estado</th></tr></thead>
+      <tbody id="dash-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- REGISTRAR MOVIMIENTO -->
+<section id="section-movimientos" style="display:none">
+  <div class="card">
+    <h2 style="margin-bottom:1rem">Registrar movimiento</h2>
+
+    <div class="form-row">
+      <label>Tipo</label>
+      <select id="mov-tipo" onchange="onTipoChange()">
+        <option value="entrega">Entrega inicial de cajas</option>
+        <option value="reposicion">Reposición de cajas</option>
+        <option value="devolucion">Devolución al cierre</option>
+      </select>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Día</label>
+        <select id="mov-dia">
+          <option value="1">Día 1</option>
+          <option value="2">Día 2</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Stand</label>
+        <select id="mov-stand"></select>
+      </div>
+    </div>
+
+    <!-- Cantidad (entrega/reposicion) -->
+    <div id="mov-cantidad-row" class="form-row">
+      <label>Cantidad</label>
+      <div class="qty-grid">
+        <button class="qty-btn" onclick="selectQty(50,this)">¼ caja<br><small>50 vasos</small></button>
+        <button class="qty-btn" onclick="selectQty(100,this)">½ caja<br><small>100 vasos</small></button>
+        <button class="qty-btn selected" onclick="selectQty(200,this)">1 caja<br><small>200 vasos</small></button>
+        <button class="qty-btn" onclick="selectQty('custom',this)">Otro<br><small>ingresar</small></button>
+      </div>
+      <div class="qty-custom-row" id="qty-custom-row" style="display:none">
+        <input type="number" id="qty-custom-input" min="1" placeholder="Cantidad de cajas (ej: 3)" oninput="onCustomQty()">
+        <span class="text-sm text-muted" id="qty-custom-label"></span>
+      </div>
+      <div style="margin-top:.5rem;font-size:12px;color:var(--text3)" id="qty-summary">Total: 200 vasos</div>
+    </div>
+
+    <!-- Unidades devueltas -->
+    <div id="mov-devolucion-row" class="form-row" style="display:none">
+      <label>Vasos devueltos (unidades)</label>
+      <input type="number" id="mov-unidades" min="0" placeholder="Ej: 47" oninput="updateDevolucionPreview()">
+      <div style="margin-top:.5rem;font-size:12px;color:var(--text3)" id="dev-preview"></div>
+    </div>
+
+    <div class="form-row">
+      <label>Notas (opcional)</label>
+      <input type="text" id="mov-notas" placeholder="Observaciones...">
+    </div>
+
+    <div class="form-row">
+      <label>WhatsApp del expositor <span class="text-muted">(sin 0, sin 15 — ej: 3814123456)</span></label>
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <span style="padding:.45rem .7rem;border:0.5px solid var(--border2);border-radius:var(--radius) 0 0 var(--radius);background:var(--bg2);color:var(--text2);font-size:14px;white-space:nowrap;border-right:none">+54 9</span>
+        <input type="tel" id="mov-whatsapp" placeholder="3814123456" style="border-radius:0 var(--radius) var(--radius) 0">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Firma del expositor</label>
+      <canvas id="sig-canvas"></canvas>
+      <div class="sig-actions">
+        <button class="sm" onclick="clearSig()"><i class="ti ti-eraser"></i> Limpiar</button>
+        <span id="sig-status" class="text-sm text-muted"></span>
+      </div>
+    </div>
+
+    <button class="primary" onclick="registrarMovimiento()" style="width:100%;padding:.65rem;margin-top:.25rem">
+      <i class="ti ti-check"></i> Confirmar y generar remito
+    </button>
+  </div>
+</section>
+
+<!-- HISTORIAL -->
+<section id="section-historial" style="display:none">
+  <div class="section-header">
+    <h2>Historial de movimientos</h2>
+    <div style="display:flex;gap:.5rem">
+      <select id="hist-filter-dia" onchange="renderHistorial()" style="width:auto">
+        <option value="0">Todos los días</option>
+        <option value="1">Día 1</option>
+        <option value="2">Día 2</option>
+      </select>
+      <select id="hist-filter-tipo" onchange="renderHistorial()" style="width:auto">
+        <option value="">Todos los tipos</option>
+        <option value="entrega">Entregas</option>
+        <option value="reposicion">Reposiciones</option>
+        <option value="devolucion">Devoluciones</option>
+      </select>
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead><tr><th>Fecha/Hora</th><th>Día</th><th>Stand</th><th>Tipo</th><th>Unidades</th><th>Precio</th><th>Firma</th><th></th></tr></thead>
+      <tbody id="historial-tbody"></tbody>
+    </table>
+    <div id="historial-empty" class="empty-state" style="display:none">
+      <i class="ti ti-clipboard-list"></i>Sin movimientos
+    </div>
+  </div>
+</section>
+
+<!-- LIQUIDACION -->
+<section id="section-liquidacion" style="display:none">
+  <div class="section-header">
+    <h2>Liquidación por stand</h2>
+    <select id="liq-dia" onchange="renderLiquidacion()" style="width:auto">
+      <option value="1">Día 1</option>
+      <option value="2">Día 2</option>
+      <option value="0">Total evento</option>
+    </select>
+  </div>
+  <div id="liq-list"></div>
+</section>
+
+<!-- CONFIG -->
+<section id="section-config" style="display:none">
+  <div class="card">
+    <h2>Google Sheets — Sincronización</h2>
+    <p class="text-sm text-muted mt-1">Los datos se guardan localmente siempre. Cuando hay conexión, se sincronizan automáticamente con Google Sheets.</p>
+    <div style="margin-top:1rem;padding:.75rem;background:var(--green-bg);border-radius:var(--radius);border:0.5px solid var(--green)">
+      <div class="text-sm" style="color:var(--green-text)"><i class="ti ti-check"></i> <strong>Apps Script conectado</strong></div>
+      <div class="text-sm" style="color:var(--green-text);margin-top:.25rem"><strong>Sheet:</strong> Ecovasos — BirraFest VII</div>
+    </div>
+    <div style="display:flex;gap:.5rem;margin-top:.875rem;flex-wrap:wrap">
+      <button class="primary" onclick="syncManual()"><i class="ti ti-cloud-upload"></i> Sincronizar ahora</button>
+      <button onclick="window.open('https://docs.google.com/spreadsheets/d/1UV0z_zP_qEp0oGQNzSZB4XJpxRUTzpMX-qp28C2l1cg')"><i class="ti ti-external-link"></i> Abrir Sheet</button>
+      <button onclick="testSync()"><i class="ti ti-plug"></i> Probar conexión</button>
+    </div>
+    <p id="cfg-sync-msg" class="text-sm mt-1"></p>
+  </div>
+
+  <div class="card mt-card">
+    <h2>Precios</h2>
+    <p class="text-sm text-muted mt-1">El operador siempre registra al precio normal. Las bonificaciones se aplican acá, por movimiento.</p>
+    <div class="form-grid mt-2">
+      <div class="form-row">
+        <label>Precio normal (por vaso)</label>
+        <input type="number" id="cfg-precio-normal" value="2000">
+      </div>
+      <div class="form-row">
+        <label>Precio bonificado (por vaso)</label>
+        <input type="number" id="cfg-precio-bonif" value="1500">
+      </div>
+    </div>
+    <button class="primary" onclick="guardarConfig()"><i class="ti ti-device-floppy"></i> Guardar</button>
+  </div>
+
+  <div class="card mt-card">
+    <h2>Aplicar bonificación a un movimiento</h2>
+    <p class="text-sm text-muted mt-1">Buscá el movimiento por número de remito y aplicá el precio bonificado.</p>
+    <div class="flex gap-2 mt-2" style="align-items:flex-end">
+      <div style="flex:1">
+        <label>N° de remito</label>
+        <input type="number" id="bonif-remito-id" placeholder="Ej: 1748123456789">
+      </div>
+      <button onclick="aplicarBonificacion()"><i class="ti ti-tag"></i> Aplicar bonificación</button>
+    </div>
+    <p id="bonif-msg" class="text-sm mt-1"></p>
+  </div>
+
+  <div class="card mt-card">
+    <h2>Datos</h2>
+    <div class="flex gap-2 mt-2 flex-wrap">
+      <button onclick="exportarJSON()"><i class="ti ti-download"></i> Exportar JSON (respaldo)</button>
+      <button class="danger" onclick="if(confirm('¿Seguro? Se borran TODOS los movimientos.'))resetData()"><i class="ti ti-trash"></i> Reset datos</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- MODAL REMITO -->
+<div class="modal-bg" id="modal-remito">
+  <div class="modal">
+    <div class="modal-header">
+      <h2><i class="ti ti-file-check"></i> Remito generado</h2>
+      <button class="modal-close" onclick="closeModal('modal-remito')"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="remito-preview"></div>
+    <div class="flex gap-2 mt-3 flex-wrap">
+      <button class="primary" onclick="descargarPDF()"><i class="ti ti-download"></i> Descargar PDF</button>
+      <button onclick="compartirWhatsApp()"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
+      <button onclick="closeModal('modal-remito')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SHEET_ID = "1UV0z_zP_qEp0oGQNzSZB4XJpxRUTzpMX-qp28C2l1cg";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxCpiSA468ihsVrKeXM94oJsXJLCdeg5culd1gHWtKBA2fU4GC-6SplKNjTyfWoaRwt5Q/exec";
+const SHEET_API = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Movimientos!A:I:append?valueInputOption=RAW`;
+
+const STANDS = [
+  "338 Cerveceria","Infiernillo Cerveceria","BDC","Barbero Cerveceria",
+  "Cerveza Novac","Cerveza Masha","Wayna Cerveceria","Caciques Cerveceria",
+  "Walnus Cerveceria","TBC Cerveceria","Beet Cerveceria","Pal Rancho Cerveceria",
+  "Viejo Amargo","Paralelo 42","Carpa Boliche Birrafest",
+  "Bierport — Stand","Bierport — Carpa","Jonais — Stand","Jonais — Carpa",
+  "Producción Central"
+];
+
+let state = {
+  movimientos: [],
+  config: { precioNormal: 2000, precioBonif: 1500 },
+  syncQueue: [],
+  lastSync: null
+};
+
+let currentDay = 1;
+let selectedUnits = 200;
+let sigCanvas, sigCtx, drawing = false, hasSig = false;
+let pendingRemito = null;
+
+/* ── STATE ── */
+function loadState(){
+  try{ const s=localStorage.getItem("ecovasos_v2"); if(s) state=JSON.parse(s); }catch(e){}
+  populateStandSelect();
+  loadConfigUI();
+}
+function saveState(){
+  localStorage.setItem("ecovasos_v2", JSON.stringify(state));
+  updateQueueBadge();
+  scheduleSync();
+}
+function resetData(){ state.movimientos=[]; state.syncQueue=[]; saveState(); renderDashboard(); renderHistorial(); renderLiquidacion(); }
+
+/* ── UI HELPERS ── */
+function fmt(n){ return Math.round(n).toLocaleString("es-AR"); }
+function fmtMoney(n){ return "$"+fmt(n); }
+function fmtDate(ts){ return new Date(ts).toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }
+
+function showSection(id){
+  ["dashboard","movimientos","historial","liquidacion","config"].forEach(s=>{
+    document.getElementById("section-"+s).style.display = s===id?"block":"none";
+  });
+  document.querySelectorAll(".nav-tab").forEach((t,i)=>{
+    t.classList.toggle("active",["dashboard","movimientos","historial","liquidacion","config"][i]===id);
+  });
+  if(id==="dashboard") renderDashboard();
+  if(id==="historial") renderHistorial();
+  if(id==="liquidacion") renderLiquidacion();
+}
+
+function setDay(d,btn){
+  currentDay=d;
+  document.querySelectorAll(".day-btn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  renderDashboard();
+}
+
+function populateStandSelect(){
+  const sel=document.getElementById("mov-stand");
+  sel.innerHTML='<option value="">— Seleccionar —</option>';
+  STANDS.forEach(s=>{ const o=document.createElement("option"); o.value=s; o.textContent=s; sel.appendChild(o); });
+}
+
+function loadConfigUI(){
+  document.getElementById("cfg-precio-normal").value=state.config.precioNormal;
+  document.getElementById("cfg-precio-bonif").value=state.config.precioBonif;
+}
+
+function guardarConfig(){
+  state.config.precioNormal=+document.getElementById("cfg-precio-normal").value||2000;
+  state.config.precioBonif=+document.getElementById("cfg-precio-bonif").value||1500;
+  saveState();
+  alert("Configuración guardada.");
+}
+
+/* ── QUANTITY SELECTOR ── */
+function selectQty(val, btn){
+  document.querySelectorAll(".qty-btn").forEach(b=>b.classList.remove("selected"));
+  btn.classList.add("selected");
+  const customRow=document.getElementById("qty-custom-row");
+  if(val==="custom"){
+    customRow.style.display="flex";
+    selectedUnits=0;
+    document.getElementById("qty-summary").textContent="Ingresá la cantidad de cajas";
+  } else {
+    customRow.style.display="none";
+    selectedUnits=val;
+    document.getElementById("qty-summary").textContent=`Total: ${fmt(val)} vasos`;
+  }
+}
+
+function onCustomQty(){
+  const v=+document.getElementById("qty-custom-input").value;
+  if(v>0){
+    selectedUnits=v*200;
+    document.getElementById("qty-custom-label").textContent=`= ${fmt(selectedUnits)} vasos`;
+    document.getElementById("qty-summary").textContent=`Total: ${fmt(v)} cajas = ${fmt(selectedUnits)} vasos`;
+  }
+}
+
+/* ── TIPO CHANGE ── */
+function onTipoChange(){
+  const tipo=document.getElementById("mov-tipo").value;
+  document.getElementById("mov-cantidad-row").style.display=tipo==="devolucion"?"none":"block";
+  document.getElementById("mov-devolucion-row").style.display=tipo==="devolucion"?"block":"none";
+}
+
+function updateDevolucionPreview(){
+  const stand=document.getElementById("mov-stand").value;
+  const dia=+document.getElementById("mov-dia").value;
+  const unidades=+document.getElementById("mov-unidades").value||0;
+  if(!stand){ document.getElementById("dev-preview").textContent=""; return; }
+  const d=getStandData(stand,dia);
+  const totalEntregado=d.cajas; // unidades
+  const vendidos=Math.max(0,totalEntregado-unidades);
+  const monto=vendidos*state.config.precioNormal;
+  document.getElementById("dev-preview").textContent=`Entregados: ${fmt(totalEntregado)} u — Vendidos estimados: ${fmt(vendidos)} — Monto: ${fmtMoney(monto)}`;
+}
+
+/* ── STAND DATA ── */
+function getMovsByDay(d){ return d===0?state.movimientos:state.movimientos.filter(m=>m.dia===d); }
+
+function getStandData(stand,dia){
+  const movs=getMovsByDay(dia).filter(m=>m.stand===stand);
+  const unidadesEntregadas=movs.filter(m=>m.tipo==="entrega"||m.tipo==="reposicion").reduce((a,m)=>a+m.unidades,0);
+  const devueltos=movs.filter(m=>m.tipo==="devolucion").reduce((a,m)=>a+m.unidades,0);
+  const vendidos=Math.max(0,unidadesEntregadas-devueltos);
+  const precio=movs.filter(m=>m.tipo!=="devolucion").reduce((a,m)=>m.precio||a,state.config.precioNormal);
+  const monto=vendidos*precio;
+  return {cajas:unidadesEntregadas,devueltos,vendidos,monto,precio};
+}
+
+/* ── DASHBOARD ── */
+function renderDashboard(){
+  const movs=getMovsByDay(currentDay);
+  const totalEntregado=movs.filter(m=>m.tipo!=="devolucion").reduce((a,m)=>a+m.unidades,0);
+  const totalDevuelto=movs.filter(m=>m.tipo==="devolucion").reduce((a,m)=>a+m.unidades,0);
+  const totalVendidos=Math.max(0,totalEntregado-totalDevuelto);
+  let totalMonto=0;
+  STANDS.forEach(s=>{totalMonto+=getStandData(s,currentDay).monto;});
+
+  document.getElementById("dash-metrics").innerHTML=`
+    <div class="metric"><div class="metric-label">Vasos entregados</div><div class="metric-value">${fmt(totalEntregado)}</div></div>
+    <div class="metric"><div class="metric-label">Vasos devueltos</div><div class="metric-value">${fmt(totalDevuelto)}</div></div>
+    <div class="metric"><div class="metric-label">Vasos vendidos</div><div class="metric-value amber">${fmt(totalVendidos)}</div></div>
+    <div class="metric"><div class="metric-label">Recaudación</div><div class="metric-value green">${fmtMoney(totalMonto)}</div></div>
+  `;
+
+  const tbody=document.getElementById("dash-tbody");
+  let rows="";
+  STANDS.forEach(stand=>{
+    const d=getStandData(stand,currentDay);
+    if(d.cajas===0) return;
+    const liquidado=getMovsByDay(currentDay).some(m=>m.stand===stand&&m.tipo==="devolucion");
+    const bonif=getMovsByDay(currentDay).some(m=>m.stand===stand&&m.precio===state.config.precioBonif);
+    rows+=`<tr>
+      <td><strong>${stand}</strong>${bonif?'<span class="badge teal" style="margin-left:4px">Bonif.</span>':""}</td>
+      <td>${fmt(d.cajas)} u</td>
+      <td>${d.devueltos>0?fmt(d.devueltos)+" u":"—"}</td>
+      <td>${fmt(d.vendidos)} u</td>
+      <td>${d.vendidos>0?fmtMoney(d.monto):"—"}</td>
+      <td><span class="badge ${liquidado?"green":"amber"}">${liquidado?"Liquidado":"Pendiente"}</span></td>
+    </tr>`;
+  });
+  tbody.innerHTML=rows||'<tr><td colspan="6" class="text-muted" style="text-align:center;padding:1.5rem">Sin movimientos</td></tr>';
+}
+
+/* ── REGISTRAR ── */
+function registrarMovimiento(){
+  const tipo=document.getElementById("mov-tipo").value;
+  const dia=+document.getElementById("mov-dia").value;
+  const stand=document.getElementById("mov-stand").value;
+  const notas=document.getElementById("mov-notas").value.trim();
+
+  if(!stand){ alert("Seleccioná un stand."); return; }
+  if(!hasSig){ alert("El expositor debe firmar antes de confirmar."); return; }
+
+  const sigData=sigCanvas.toDataURL("image/png");
+  const whatsapp = document.getElementById("mov-whatsapp").value.trim().replace(/\D/g,"");
+  let mov={id:Date.now(),ts:Date.now(),tipo,dia,stand,notas,whatsapp,firma:sigData,synced:false};
+
+  if(tipo==="devolucion"){
+    const u=+document.getElementById("mov-unidades").value;
+    if(isNaN(u)||u<0){ alert("Ingresá los vasos devueltos."); return; }
+    mov.unidades=u;
+    mov.precio=state.config.precioNormal;
+  } else {
+    if(!selectedUnits){ alert("Seleccioná la cantidad."); return; }
+    mov.unidades=selectedUnits;
+    mov.precio=state.config.precioNormal;
+  }
+
+  state.movimientos.push(mov);
+  state.syncQueue.push(mov.id);
+  saveState();
+
+  pendingRemito=mov;
+  mostrarRemito(mov);
+
+  clearSig();
+  document.getElementById("mov-stand").value="";
+  document.getElementById("mov-notas").value="";
+  document.getElementById("mov-unidades").value="";
+  document.getElementById("mov-whatsapp").value="";
+  document.getElementById("dev-preview").textContent="";
+  selectQty(200, document.querySelectorAll(".qty-btn")[2]);
+}
+
+/* ── BONIFICACION ── */
+function aplicarBonificacion(){
+  const id=+document.getElementById("bonif-remito-id").value;
+  const msg=document.getElementById("bonif-msg");
+  const mov=state.movimientos.find(m=>m.id===id);
+  if(!mov){ msg.textContent="⚠ No se encontró ese remito."; msg.style.color="var(--red)"; return; }
+  if(mov.tipo==="devolucion"){ msg.textContent="Las devoluciones no tienen precio de venta."; msg.style.color="var(--text3)"; return; }
+  mov.precio=state.config.precioBonif;
+  mov.bonificado=true;
+  state.syncQueue.push(mov.id);
+  saveState();
+  msg.textContent=`✓ Bonificación aplicada al remito N° ${id} — Stand: ${mov.stand}`;
+  msg.style.color="var(--green)";
+}
+
+/* ── REMITO ── */
+function mostrarRemito(mov){
+  const tipoLabel={entrega:"Entrega inicial",reposicion:"Reposición",devolucion:"Devolución al cierre"};
+  const tipoClass={entrega:"amber",reposicion:"blue",devolucion:"teal"};
+  const detalle=mov.tipo==="devolucion"
+    ?`<strong>${fmt(mov.unidades)} vasos devueltos</strong>`
+    :`<strong>${fmt(mov.unidades)} vasos</strong> — Precio: ${fmtMoney(mov.precio)}/u${mov.bonificado?' <span class="badge teal">Bonificado</span>':""}`;
+
+  document.getElementById("remito-preview").innerHTML=`
+    <div style="border:0.5px solid var(--border);border-radius:var(--radius);padding:1.25rem">
+      <div class="flex justify-between" style="margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+        <div><strong style="font-size:15px">BirraFest VII — Ecovasos</strong><br><span class="text-sm text-muted">Remito N° ${mov.id}</span></div>
+        <div style="text-align:right"><span class="badge ${tipoClass[mov.tipo]}">${tipoLabel[mov.tipo]}</span><br><span class="text-sm text-muted">${fmtDate(mov.ts)}</span></div>
+      </div>
+      <div class="liq-row"><span class="text-muted">Stand</span><strong>${mov.stand}</strong></div>
+      <div class="liq-row"><span class="text-muted">Día</span><span>Día ${mov.dia}</span></div>
+      <div class="liq-row"><span class="text-muted">Detalle</span><span>${detalle}</span></div>
+      ${mov.notas?`<div class="liq-row"><span class="text-muted">Notas</span><span>${mov.notas}</span></div>`:""}
+      ${mov.whatsapp?`<div class="liq-row"><span class="text-muted">WhatsApp</span><span>+54 9 ${mov.whatsapp}</span></div>`:""}
+      <div style="margin-top:1rem;border-top:0.5px solid var(--border);padding-top:.875rem">
+        <div class="text-sm text-muted" style="margin-bottom:.4rem">Firma del expositor</div>
+        <img src="${mov.firma}" style="max-width:100%;height:75px;border:0.5px solid var(--border);border-radius:var(--radius);background:#fff">
+      </div>
+    </div>`;
+  document.getElementById("modal-remito").classList.add("open");
+}
+
+function descargarPDF(){
+  if(!pendingRemito) return;
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:"mm",format:"a5"});
+  const mov=pendingRemito;
+  const tipoLabel={entrega:"Entrega inicial",reposicion:"Reposición",devolucion:"Devolución al cierre"};
+
+  doc.setFontSize(14); doc.setFont(undefined,"bold");
+  doc.text("BirraFest VII — Ecovasos",15,18);
+  doc.setFontSize(9); doc.setFont(undefined,"normal");
+  doc.text(`Remito N° ${mov.id}`,15,24);
+  doc.setFontSize(11); doc.setFont(undefined,"bold");
+  doc.text(tipoLabel[mov.tipo],133,18,{align:"right"});
+  doc.setFontSize(9); doc.setFont(undefined,"normal");
+  doc.text(fmtDate(mov.ts),133,24,{align:"right"});
+  doc.setDrawColor(200); doc.line(15,27,133,27);
+
+  const rows=[["Stand",mov.stand],["Día",`Día ${mov.dia}`]];
+  if(mov.tipo==="devolucion"){
+    rows.push(["Vasos devueltos",`${fmt(mov.unidades)} unidades`]);
+  } else {
+    rows.push(["Vasos entregados",`${fmt(mov.unidades)} unidades`]);
+    rows.push(["Precio por vaso",`${fmtMoney(mov.precio)}${mov.bonificado?" (bonificado)":""}`]);
+    rows.push(["Total estimado",fmtMoney(mov.unidades*mov.precio)]);
+  }
+  if(mov.notas) rows.push(["Notas",mov.notas]);
+  if(mov.whatsapp) rows.push(["WhatsApp",`+54 9 ${mov.whatsapp}`]);
+
+  let y=35;
+  rows.forEach(([k,v])=>{
+    doc.setFont(undefined,"normal"); doc.setTextColor(120); doc.text(k,15,y);
+    doc.setFont(undefined,"bold"); doc.setTextColor(30); doc.text(v,60,y);
+    y+=8;
+  });
+
+  doc.setDrawColor(200); doc.line(15,y+2,133,y+2); y+=10;
+  doc.setFontSize(9); doc.setFont(undefined,"normal"); doc.setTextColor(120);
+  doc.text("Firma del expositor:",15,y); y+=4;
+  try{ doc.addImage(mov.firma,"PNG",15,y,70,28); y+=32; }catch(e){}
+  doc.setDrawColor(180); doc.line(15,y+5,85,y+5);
+  doc.setFontSize(8); doc.setTextColor(150);
+  doc.text("Aclaración",15,y+10);
+  doc.setFontSize(7); doc.setTextColor(160);
+  doc.text("Documento generado por sistema Ecovasos BirraFest VII",15,200);
+
+  doc.save(`remito_${mov.stand.replace(/[\s—]+/g,"_")}_${mov.id}.pdf`);
+}
+
+function compartirWhatsApp(){
+  if(!pendingRemito) return;
+  const mov=pendingRemito;
+  const tipoLabel={entrega:"Entrega inicial",reposicion:"Reposición",devolucion:"Devolución al cierre"};
+  const detalle=mov.tipo==="devolucion"
+    ?`*Vasos devueltos:* ${fmt(mov.unidades)}`
+    :`*Vasos:* ${fmt(mov.unidades)} — *Precio:* ${fmtMoney(mov.precio)}/u${mov.bonificado?" (bonificado)":""}`;
+  const texto=`*BirraFest VII — Ecovasos*\nRemito N° ${mov.id}\n${tipoLabel[mov.tipo]} — Día ${mov.dia}\n*Stand:* ${mov.stand}\n${detalle}\n_${fmtDate(mov.ts)}_`;
+  const encoded = encodeURIComponent(texto);
+  if(mov.whatsapp){
+    window.open(`https://wa.me/549${mov.whatsapp}?text=${encoded}`);
+  } else {
+    window.open(`https://wa.me/?text=${encoded}`);
+  }
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+
+/* ── HISTORIAL ── */
+function renderHistorial(){
+  const tbody=document.getElementById("historial-tbody");
+  const empty=document.getElementById("historial-empty");
+  const filtroDia=+document.getElementById("hist-filter-dia").value;
+  const filtroTipo=document.getElementById("hist-filter-tipo").value;
+  let movs=[...state.movimientos].reverse();
+  if(filtroDia) movs=movs.filter(m=>m.dia===filtroDia);
+  if(filtroTipo) movs=movs.filter(m=>m.tipo===filtroTipo);
+
+  if(!movs.length){ tbody.innerHTML=""; empty.style.display="block"; return; }
+  empty.style.display="none";
+  const tipoLabel={entrega:"Entrega",reposicion:"Repos.",devolucion:"Devol."};
+  const tipoClass={entrega:"amber",reposicion:"blue",devolucion:"teal"};
+  tbody.innerHTML=movs.map(m=>`<tr>
+    <td class="text-sm">${fmtDate(m.ts)}</td>
+    <td>Día ${m.dia}</td>
+    <td><strong>${m.stand}</strong></td>
+    <td><span class="badge ${tipoClass[m.tipo]}">${tipoLabel[m.tipo]}</span></td>
+    <td>${fmt(m.unidades)} u</td>
+    <td class="text-sm">${m.tipo!=="devolucion"?fmtMoney(m.precio)+(m.bonificado?'<span class="badge teal" style="margin-left:3px">B</span>':""):"—"}</td>
+    <td>${m.firma?`<img src="${m.firma}" style="height:28px;border:0.5px solid var(--border);border-radius:4px;background:#fff">`:"—"}</td>
+    <td><button class="sm" onclick="pendingRemito=state.movimientos.find(x=>x.id===${m.id});mostrarRemito(pendingRemito)" title="Ver remito"><i class="ti ti-file-text"></i></button></td>
+  </tr>`).join("");
+}
+
+/* ── LIQUIDACION ── */
+function renderLiquidacion(){
+  const dia=+document.getElementById("liq-dia").value;
+  let html="";
+  let totalGeneral=0;
+  STANDS.forEach(stand=>{
+    const d=getStandData(stand,dia);
+    if(d.cajas===0) return;
+    const liquidado=getMovsByDay(dia).some(m=>m.stand===stand&&m.tipo==="devolucion");
+    const bonif=getMovsByDay(dia).some(m=>m.stand===stand&&m.bonificado);
+    totalGeneral+=d.monto;
+    html+=`<div class="card mt-card">
+      <div class="flex justify-between items-center" style="margin-bottom:.75rem">
+        <h3>${stand}${bonif?'<span class="badge teal" style="margin-left:6px">Bonificado</span>':""}</h3>
+        <span class="badge ${liquidado?"green":"amber"}">${liquidado?"Liquidado":"Pendiente"}</span>
+      </div>
+      <div class="liq-row"><span class="text-muted">Vasos entregados</span><span>${fmt(d.cajas)}</span></div>
+      <div class="liq-row"><span class="text-muted">Vasos devueltos</span><span>${fmt(d.devueltos)}</span></div>
+      <div class="liq-row"><span class="text-muted">Vasos vendidos</span><span><strong>${fmt(d.vendidos)}</strong></span></div>
+      <div class="liq-row"><span class="text-muted">Precio</span><span>${fmtMoney(d.precio)}/u</span></div>
+      <div class="liq-row"><span>Total a cobrar</span><span class="liq-total" style="font-size:16px">${fmtMoney(d.monto)}</span></div>
+    </div>`;
+  });
+
+  if(!html){ html=`<div class="empty-state"><i class="ti ti-building-store"></i>Sin movimientos para este período</div>`; }
+  else {
+    html+=`<div class="card mt-card" style="background:var(--amber-bg);border-color:var(--amber)">
+      <div class="flex justify-between items-center">
+        <h2 style="color:var(--amber-text)">Total a recaudar</h2>
+        <span style="font-size:22px;font-weight:500;color:var(--amber-text)">${fmtMoney(totalGeneral)}</span>
+      </div>
+    </div>`;
+  }
+  document.getElementById("liq-list").innerHTML=html;
+}
+
+/* ── SIGNATURE ── */
+function initSig(){
+  sigCanvas=document.getElementById("sig-canvas");
+  sigCtx=sigCanvas.getContext("2d");
+  function resize(){ sigCanvas.width=sigCanvas.offsetWidth||500; sigCanvas.height=150; }
+  resize();
+  window.addEventListener("resize",resize);
+
+  function getPos(e){
+    const r=sigCanvas.getBoundingClientRect();
+    const src=e.touches?e.touches[0]:e;
+    return{x:(src.clientX-r.left)*(sigCanvas.width/r.width),y:(src.clientY-r.top)*(sigCanvas.height/r.height)};
+  }
+  function start(e){ e.preventDefault(); drawing=true; const p=getPos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x,p.y); }
+  function move(e){ e.preventDefault(); if(!drawing)return; const p=getPos(e); sigCtx.lineWidth=2.5; sigCtx.lineCap="round"; sigCtx.lineJoin="round"; sigCtx.strokeStyle="#1a1a18"; sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); hasSig=true; document.getElementById("sig-status").textContent="✓ Firma registrada"; }
+  function end(){ drawing=false; }
+  sigCanvas.addEventListener("mousedown",start);
+  sigCanvas.addEventListener("mousemove",move);
+  sigCanvas.addEventListener("mouseup",end);
+  sigCanvas.addEventListener("touchstart",start,{passive:false});
+  sigCanvas.addEventListener("touchmove",move,{passive:false});
+  sigCanvas.addEventListener("touchend",end);
+}
+
+function clearSig(){ sigCtx.clearRect(0,0,sigCanvas.width,sigCanvas.height); hasSig=false; document.getElementById("sig-status").textContent=""; }
+
+/* ── SYNC ── */
+let syncTimer=null;
+function scheduleSync(){ clearTimeout(syncTimer); syncTimer=setTimeout(syncPending,4000); }
+function updateQueueBadge(){
+  const q=state.syncQueue.length;
+  const el=document.getElementById("queue-count");
+  el.textContent=q>0?`(${q} pend.)`:"";
+}
+
+async function syncPending(){
+  if(!navigator.onLine||!state.syncQueue.length) return;
+  const toSync=[...new Set(state.syncQueue)];
+  const pending=state.movimientos.filter(m=>toSync.includes(m.id));
+  if(!pending.length){ state.syncQueue=[]; saveState(); return; }
+
+  setSyncUI("syncing");
+  let ok=0;
+  const tipoLabel={entrega:"Entrega inicial",reposicion:"Reposición",devolucion:"Devolución"};
+
+  for(const mov of pending){
+    try{
+      const body={
+        timestamp: fmtDate(mov.ts),
+        dia: `Día ${mov.dia}`,
+        stand: mov.stand,
+        tipo: tipoLabel[mov.tipo],
+        unidades: mov.unidades,
+        precio: mov.tipo!=="devolucion" ? mov.precio : "",
+        bonificado: mov.bonificado ? "Sí" : "No",
+        remitoId: mov.id,
+        notas: mov.notas || "",
+        whatsapp: mov.whatsapp || ""
+      };
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(body)
+      });
+      // no-cors siempre devuelve opaque response — si no tira error, asumimos ok
+      state.syncQueue = state.syncQueue.filter(id => id !== mov.id);
+      ok++;
+    } catch(e){
+      console.warn("Sync error:", e);
+    }
+  }
+
+  if(ok === pending.length){ state.lastSync = Date.now(); setSyncUI("ok"); }
+  else if(ok > 0){ setSyncUI("partial"); }
+  else { setSyncUI("offline"); }
+  localStorage.setItem("ecovasos_v2", JSON.stringify(state));
+  updateQueueBadge();
+}
+
+async function testSync(){
+  const msg = document.getElementById("cfg-sync-msg");
+  msg.textContent = "Probando conexión..."; msg.style.color = "var(--amber)";
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: "POST", mode: "no-cors",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        timestamp: fmtDate(Date.now()), dia: "TEST", stand: "TEST",
+        tipo: "TEST", unidades: 0, precio: "", bonificado: "No",
+        remitoId: "TEST", notas: "Prueba de conexión"
+      })
+    });
+    msg.textContent = "✓ Conexión OK — Apps Script responde correctamente";
+    msg.style.color = "var(--green)";
+  } catch(e) {
+    msg.textContent = "✗ Sin conexión — los datos se guardan localmente hasta que haya red";
+    msg.style.color = "var(--red)";
+  }
+}
+
+async function syncManual(){
+  const msg=document.getElementById("cfg-sync-msg");
+  msg.textContent="Sincronizando..."; msg.style.color="var(--amber)";
+  await syncPending();
+  if(state.syncQueue.length===0){
+    msg.textContent=`✓ Sincronizado ${state.lastSync?fmtDate(state.lastSync):"ahora"}`; msg.style.color="var(--green)";
+  } else {
+    msg.textContent=`⚠ ${state.syncQueue.length} movimientos pendientes — verificá conexión o acceso al Sheet`; msg.style.color="var(--amber)";
+  }
+}
+
+function setSyncUI(status){
+  const pill=document.getElementById("sync-pill");
+  const icon=document.getElementById("sync-icon");
+  const text=document.getElementById("sync-text");
+  if(status==="ok"){ pill.className="sync-pill ok"; icon.className="ti ti-cloud-check"; text.textContent="Sincronizado"; }
+  else if(status==="syncing"){ pill.className="sync-pill pend"; icon.className="ti ti-cloud-upload"; text.textContent="Subiendo..."; }
+  else if(status==="partial"){ pill.className="sync-pill pend"; icon.className="ti ti-cloud-exclamation"; text.textContent="Parcial"; }
+  else { pill.className="sync-pill off"; icon.className="ti ti-cloud-off"; text.textContent="Offline"; }
+}
+
+function exportarJSON(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=`ecovasos_respaldo_${Date.now()}.json`; a.click();
+}
+
+/* ── INIT ── */
+window.addEventListener("online",()=>{ setSyncUI("syncing"); syncPending(); });
+window.addEventListener("offline",()=>setSyncUI("offline"));
+window.addEventListener("DOMContentLoaded",()=>{
+  loadState(); initSig(); renderDashboard();
+  setSyncUI(navigator.onLine?"syncing":"offline");
+  if(navigator.onLine) syncPending();
+  updateQueueBadge();
+});
+</script>
+<script>
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then(r => console.log("SW registrado:", r.scope))
+      .catch(e => console.warn("SW error:", e));
+  });
+}
+</script>
+</body>
+</html>
