@@ -115,6 +115,9 @@ button:disabled{opacity:.35;cursor:not-allowed}
     <button class="nav-tab active" onclick="showTab('registrar')"><i class="ti ti-plus"></i> Registrar</button>
     <button class="nav-tab" onclick="showTab('entregas')"><i class="ti ti-list"></i> Mis entregas</button>
   </div>
+  <div id="stock-pill" style="margin-left:auto;margin-right:.5rem;font-size:11px;padding:.3rem .65rem;border-radius:20px;background:var(--green-bg);color:var(--green-text);display:flex;align-items:center;gap:4px;white-space:nowrap">
+    <i class="ti ti-stack-2"></i> <span id="stock-pill-text">...</span>
+  </div>
   <div class="sync-pill off" id="sync-pill">
     <i class="ti ti-cloud-off" id="sync-icon"></i>
   </div>
@@ -451,6 +454,7 @@ function limpiarForm(){
   selectQty(200, document.querySelectorAll(".qty-btn")[2]);
   clearSig();
   renderMetrics();
+  updateStockPill();
 }
 
 function mostrarRemito(mov){
@@ -639,6 +643,39 @@ function initSig(){
 }
 function clearSig(){ sigCtx.clearRect(0,0,sigCanvas.width,sigCanvas.height); hasSig=false; document.getElementById("sig-status").textContent=""; }
 
+/* Stock */
+function getStock(){
+  try{ const s=localStorage.getItem("ecovasos_stock"); return s?JSON.parse(s):{inicial:9800,reposiciones:[],minimo:500}; }catch(e){ return {inicial:9800,reposiciones:[],minimo:500}; }
+}
+
+function calcStockDisponible(){
+  const s = getStock();
+  const totalInicial = s.inicial + (s.reposiciones||[]).reduce((a,r)=>a+r.cantidad,0);
+  const totalEntregado = state.movimientos.filter(m=>m.tipo!=="devolucion").reduce((a,m)=>a+(m.unidades||0),0);
+  const totalDevuelto = state.movimientos.filter(m=>m.tipo==="devolucion").reduce((a,m)=>a+(m.unidades||0),0);
+  return totalInicial - totalEntregado + totalDevuelto;
+}
+
+function updateStockPill(){
+  const disponible = calcStockDisponible();
+  const s = getStock();
+  const pill = document.getElementById("stock-pill");
+  const txt = document.getElementById("stock-pill-text");
+  if(!pill) return;
+  txt.textContent = fmt(disponible) + " u";
+  if(disponible <= s.minimo){
+    pill.style.background="var(--red-bg)";
+    pill.style.color="var(--red-text)";
+    txt.textContent = "⚠ " + fmt(disponible) + " u";
+  } else if(disponible <= s.minimo * 2){
+    pill.style.background="var(--amber-bg)";
+    pill.style.color="var(--amber-text)";
+  } else {
+    pill.style.background="var(--green-bg)";
+    pill.style.color="var(--green-text)";
+  }
+}
+
 /* Sync */
 let syncTimer=null;
 function scheduleSync(){ clearTimeout(syncTimer); syncTimer=setTimeout(syncPending,4000); }
@@ -680,7 +717,7 @@ function setSyncUI(s){
 window.addEventListener("online",()=>syncPending());
 window.addEventListener("offline",()=>setSyncUI("off"));
 window.addEventListener("DOMContentLoaded",()=>{
-  loadState(); initSig(); renderMetrics();
+  loadState(); initSig(); renderMetrics(); updateStockPill();
   setSyncUI(navigator.onLine?"ok":"off");
   if(navigator.onLine) syncPending();
 });

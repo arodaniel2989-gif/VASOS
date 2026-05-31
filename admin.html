@@ -135,6 +135,24 @@ tr:hover td{background:var(--bg2)}
     <button class="day-btn" onclick="setDay(2,this)">Día 2</button>
     <button class="day-btn" onclick="setDay(0,this)">Total</button>
   </div>
+  <!-- STOCK PANEL -->
+  <div class="card" id="stock-card" style="margin-bottom:1rem;border-color:var(--green)">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">Stock disponible</div>
+        <div style="font-size:28px;font-weight:500" id="stock-display">—</div>
+        <div class="text-sm text-muted" id="stock-detail"></div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="success sm" onclick="abrirStockModal()"><i class="ti ti-plus"></i> Agregar reposición</button>
+        <button class="sm" onclick="abrirStockConfig()"><i class="ti ti-settings"></i> Configurar</button>
+      </div>
+    </div>
+    <div id="stock-alerta" style="display:none;margin-top:.75rem;padding:.6rem .875rem;background:var(--red-bg);border-radius:var(--radius);color:var(--red-text);font-size:13px;font-weight:500">
+      <i class="ti ti-alert-triangle"></i> <span id="stock-alerta-txt"></span>
+    </div>
+  </div>
+
   <div class="metrics-grid" id="dash-metrics"></div>
   <div class="card">
     <div class="section-header"><h2>Estado por stand</h2></div>
@@ -227,6 +245,51 @@ tr:hover td{background:var(--bg2)}
 </section>
 
 </main>
+
+<!-- MODAL STOCK REPOSICION -->
+<div class="modal-bg" id="modal-stock">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 style="font-size:16px"><i class="ti ti-plus"></i> Agregar reposición al stock</h2>
+      <button onclick="closeModal('modal-stock')" style="border:none;background:none;font-size:20px;cursor:pointer;padding:0"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-row">
+      <label>Cantidad de vasos a agregar</label>
+      <input type="number" id="stock-repos-cantidad" min="1" placeholder="Ej: 2000">
+    </div>
+    <div class="form-row">
+      <label>Nota (opcional)</label>
+      <input type="text" id="stock-repos-nota" placeholder="Ej: Segunda carga del evento">
+    </div>
+    <div class="flex gap-2 mt-2">
+      <button class="success" onclick="guardarReposicion()" style="flex:1"><i class="ti ti-check"></i> Confirmar</button>
+      <button onclick="closeModal('modal-stock')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL STOCK CONFIG -->
+<div class="modal-bg" id="modal-stock-config">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 style="font-size:16px"><i class="ti ti-settings"></i> Configurar stock</h2>
+      <button onclick="closeModal('modal-stock-config')" style="border:none;background:none;font-size:20px;cursor:pointer;padding:0"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-row">
+      <label>Stock inicial (vasos)</label>
+      <input type="number" id="stock-cfg-inicial" placeholder="Ej: 9800">
+    </div>
+    <div class="form-row">
+      <label>Alerta mínima (vasos)</label>
+      <input type="number" id="stock-cfg-minimo" placeholder="Ej: 500">
+    </div>
+    <div id="stock-repos-list" style="margin-bottom:.875rem"></div>
+    <div class="flex gap-2 mt-2">
+      <button class="primary" onclick="guardarStockConfig()" style="flex:1"><i class="ti ti-device-floppy"></i> Guardar</button>
+      <button onclick="closeModal('modal-stock-config')">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL REMITO -->
 <div class="modal-bg" id="modal-remito">
@@ -657,6 +720,106 @@ function tipoFromLabel(label){
   return label || "";
 }
 
+/* STOCK */
+function getStock(){
+  try{ const s=localStorage.getItem("ecovasos_stock"); return s?JSON.parse(s):{inicial:9800,reposiciones:[],minimo:500}; }catch(e){ return {inicial:9800,reposiciones:[],minimo:500}; }
+}
+function saveStock(s){ localStorage.setItem("ecovasos_stock", JSON.stringify(s)); }
+
+function calcStockDisponible(){
+  const s = getStock();
+  const totalInicial = s.inicial + (s.reposiciones||[]).reduce((a,r)=>a+r.cantidad,0);
+  const totalEntregado = state.movimientos.filter(m=>m.tipo!=="devolucion").reduce((a,m)=>a+(+m.unidades||0),0);
+  const totalDevuelto = state.movimientos.filter(m=>m.tipo==="devolucion").reduce((a,m)=>a+(+m.unidades||0),0);
+  return totalInicial - totalEntregado + totalDevuelto;
+}
+
+function renderStock(){
+  const s = getStock();
+  const totalInicial = s.inicial + (s.reposiciones||[]).reduce((a,r)=>a+r.cantidad,0);
+  const totalEntregado = state.movimientos.filter(m=>m.tipo!=="devolucion").reduce((a,m)=>a+(+m.unidades||0),0);
+  const totalDevuelto = state.movimientos.filter(m=>m.tipo==="devolucion").reduce((a,m)=>a+(+m.unidades||0),0);
+  const disponible = totalInicial - totalEntregado + totalDevuelto;
+
+  const disp = document.getElementById("stock-display");
+  const det = document.getElementById("stock-detail");
+  const alerta = document.getElementById("stock-alerta");
+  const alertaTxt = document.getElementById("stock-alerta-txt");
+  const card = document.getElementById("stock-card");
+  if(!disp) return;
+
+  disp.textContent = fmt(disponible) + " vasos";
+  det.textContent = "Total ingresado: " + fmt(totalInicial) + " — Entregado: " + fmt(totalEntregado) + " — Devuelto: " + fmt(totalDevuelto);
+
+  if(disponible <= s.minimo){
+    disp.style.color = "var(--red)";
+    card.style.borderColor = "var(--red)";
+    alerta.style.display = "block";
+    alertaTxt.textContent = "Stock crítico — quedan solo " + fmt(disponible) + " vasos (mínimo: " + fmt(s.minimo) + ")";
+  } else if(disponible <= s.minimo * 2){
+    disp.style.color = "var(--amber)";
+    card.style.borderColor = "var(--amber)";
+    alerta.style.display = "none";
+  } else {
+    disp.style.color = "var(--green)";
+    card.style.borderColor = "var(--green)";
+    alerta.style.display = "none";
+  }
+}
+
+function abrirStockModal(){
+  document.getElementById("stock-repos-cantidad").value = "";
+  document.getElementById("stock-repos-nota").value = "";
+  document.getElementById("modal-stock").classList.add("open");
+}
+
+function guardarReposicion(){
+  const cantidad = +document.getElementById("stock-repos-cantidad").value;
+  const nota = document.getElementById("stock-repos-nota").value.trim();
+  if(!cantidad || cantidad < 1){ alert("Ingresá la cantidad de vasos."); return; }
+  const s = getStock();
+  s.reposiciones = s.reposiciones || [];
+  s.reposiciones.push({ cantidad, nota, ts: Date.now() });
+  saveStock(s);
+  closeModal("modal-stock");
+  renderStock();
+}
+
+function abrirStockConfig(){
+  const s = getStock();
+  document.getElementById("stock-cfg-inicial").value = s.inicial;
+  document.getElementById("stock-cfg-minimo").value = s.minimo;
+  const list = document.getElementById("stock-repos-list");
+  if(s.reposiciones && s.reposiciones.length){
+    list.innerHTML = '<div class="text-sm text-muted" style="margin-bottom:.5rem">Reposiciones anteriores:</div>' +
+      s.reposiciones.map((r,i)=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:0.5px solid var(--border);font-size:13px">
+          <span>${fmt(r.cantidad)} vasos${r.nota?" — "+r.nota:""}</span>
+          <button class="sm danger" onclick="eliminarReposicion(${i})"><i class="ti ti-trash"></i></button>
+        </div>`).join("");
+  } else {
+    list.innerHTML = "";
+  }
+  document.getElementById("modal-stock-config").classList.add("open");
+}
+
+function eliminarReposicion(i){
+  const s = getStock();
+  s.reposiciones.splice(i, 1);
+  saveStock(s);
+  abrirStockConfig();
+  renderStock();
+}
+
+function guardarStockConfig(){
+  const s = getStock();
+  s.inicial = +document.getElementById("stock-cfg-inicial").value || 9800;
+  s.minimo = +document.getElementById("stock-cfg-minimo").value || 500;
+  saveStock(s);
+  closeModal("modal-stock-config");
+  renderStock();
+}
+
 function setSyncUI(s){
   const p=document.getElementById("sync-pill");
   const i=document.getElementById("sync-icon");
@@ -749,7 +912,7 @@ function exportarJSON(){
 function resetData(){ state.movimientos=[]; state.ajustes={}; saveState(); renderDashboard(); }
 
 window.addEventListener("DOMContentLoaded",()=>{
-  loadState(); renderDashboard();
+  loadState(); renderDashboard(); renderStock();
   setSyncUI("off");
   // Init Google Auth when GSI library loads
   window.addEventListener("load", () => {
