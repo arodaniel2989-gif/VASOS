@@ -222,10 +222,10 @@ tr:hover td{background:var(--bg2)}
       </div>
       <div class="form-row">
         <label>Día</label>
-        <select id="admin-cobro-dia" onchange="updateAdminCobroStand()">
+        <select id="admin-cobro-dia" onchange="initCobroSection()">
           <option value="1">Día 1</option>
-          <option value="2" selected>Día 2</option>
-          <option value="0">Total evento</option>
+          <option value="2">Día 2</option>
+          <option value="0" selected>Total evento</option>
         </select>
       </div>
     </div>
@@ -970,13 +970,17 @@ function initCobroSection(){
   sel.innerHTML = "<option value=''>— Seleccionar —</option>";
   const dia = +document.getElementById("admin-cobro-dia").value;
   STANDS.forEach(s=>{
-    const d = getStandStats(s, dia);
+    // Para cobros usamos total evento (0) para ver todos los stands con deuda
+    const checkDia = dia === 0 ? 0 : dia;
+    const d = getStandStats(s, checkDia);
     if(d.entregado === 0) return;
     const o = document.createElement("option");
     o.value = s;
-    o.textContent = s + (d.saldo > 0 ? " — Debe: " + fmtM(d.saldo) : " ✓");
+    o.textContent = s + (d.saldo > 0 ? " — Debe: " + fmtM(d.saldo) : " ✓ Saldado");
     sel.appendChild(o);
   });
+  document.getElementById("admin-cobro-stand").value = "";
+  document.getElementById("admin-cobro-saldo-box").style.display = "none";
   renderCobrosHistorial();
 }
 
@@ -990,7 +994,7 @@ function updateAdminCobroStand(){
   document.getElementById("admin-cobro-entregado").textContent = fmt(d.entregado) + "u";
   document.getElementById("admin-cobro-cobrado").textContent = fmtM(d.cobradoTotal);
   document.getElementById("admin-cobro-saldo").textContent = fmtM(d.saldo);
-  document.getElementById("admin-cobro-monto").value = d.saldo || "";
+  document.getElementById("admin-cobro-monto").value = d.saldo > 0 ? d.saldo : "";
   updateAdminCobroPreview();
 }
 
