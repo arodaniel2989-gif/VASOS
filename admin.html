@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ecovasos — Admin</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -198,6 +199,10 @@ tr:hover td{background:var(--bg2)}
     <div class="flex gap-2 mt-2 flex-wrap">
       <button class="primary" onclick="syncFromSheet()"><i class="ti ti-refresh"></i> Actualizar desde Sheet</button>
       <button onclick="window.open('https://docs.google.com/spreadsheets/d/1UV0z_zP_qEp0oGQNzSZB4XJpxRUTzpMX-qp28C2l1cg')"><i class="ti ti-external-link"></i> Abrir Sheet</button>
+    </div>
+    <div id="google-login-area" style="margin-top:.875rem;padding:.875rem;background:var(--bg2);border-radius:var(--radius);display:none">
+      <div class="text-sm" style="color:var(--text2);margin-bottom:.75rem"><i class="ti ti-lock"></i> Para leer el Sheet necesitás autorizar con tu cuenta Google</div>
+      <div id="google-btn"></div>
     </div>
     <p id="sync-msg" class="text-sm mt-1"></p>
   </div>
@@ -521,47 +526,135 @@ function eliminarAjuste(){
 }
 
 /* SYNC desde Sheet */
+const CLIENT_ID = "877524301432-fbj7rj7rq88lbdltrc7atp8i8372va7g.apps.googleusercontent.com";
+const SHEET_ID_READ = "1UV0z_zP_qEp0oGQNzSZB4XJpxRUTzpMX-qp28C2l1cg";
+let googleToken = null;
+
+function initGoogleAuth(){
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: handleGoogleCredential,
+    auto_select: true
+  });
+}
+
+function handleGoogleCredential(response){
+  // Use token client for Sheets API access
+  requestSheetsToken();
+}
+
+function requestSheetsToken(){
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: "https://www.googleapis.com/auth/spreadsheets.readonly",
+    callback: (tokenResponse) => {
+      if(tokenResponse.error){ 
+        console.error("Token error:", tokenResponse);
+        return; 
+      }
+      googleToken = tokenResponse.access_token;
+      document.getElementById("google-login-area").style.display = "none";
+      syncFromSheet();
+    }
+  });
+  tokenClient.requestAccessToken({prompt:""});
+}
+
 async function syncFromSheet(){
-  const msg=document.getElementById("sync-msg");
+  const msg = document.getElementById("sync-msg");
   setSyncUI("pend");
   if(msg){ msg.textContent="Actualizando desde Sheet..."; msg.style.color="var(--amber)"; }
-  try{
-    // Apps Script con redirect final — fetch sin mode cors para evitar bloqueo
-    const url = APPS_SCRIPT_URL + "?action=getAll";
-    const resp = await fetch(url, {
-      method: "GET",
-      redirect: "follow"
-    });
-    if(!resp.ok) throw new Error("HTTP " + resp.status);
-    const text = await resp.text();
-    let data;
-    try{ data = JSON.parse(text); } catch(pe){ throw new Error("Respuesta no es JSON: " + text.substring(0,100)); }
-    if(data && Array.isArray(data.movimientos)){
-      const existingIds = new Set(state.movimientos.map(m=>String(m.id)));
-      let nuevos=0;
-      data.movimientos.forEach(m=>{
-        if(!existingIds.has(String(m.id)) && m.stand){
-          state.movimientos.push(m);
-          nuevos++;
+
+  if(!googleToken){
+    // Show login area
+    document.getElementById("google-login-area").style.display = "block";
+    if(!document.getElementById("google-btn").innerHTML){
+      google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: "https://www.googleapis.com/auth/spreadsheets.readonly",
+        callback: (tokenResponse) => {
+          if(tokenResponse.error) return;
+          googleToken = tokenResponse.access_token;
+          document.getElementById("google-login-area").style.display = "none";
+          syncFromSheet();
         }
-      });
-      state.lastSync=Date.now();
-      saveState();
-      setSyncUI("ok");
-      if(msg){ msg.textContent="✓ Sincronizado — " + nuevos + " movimientos nuevos"; msg.style.color="var(--green)"; }
-      renderDashboard();
-      renderHistorial();
-    } else {
-      throw new Error("Sin datos: " + JSON.stringify(data).substring(0,100));
+      }).requestAccessToken({prompt:"consent"});
     }
+    setSyncUI("off");
+    if(msg){ msg.textContent=""; }
+    return;
+  }
+
+  try{
+    const range = "Movimientos!A:K";
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID_READ}/values/${range}`;
+    const resp = await fetch(url, {
+      headers: { "Authorization": "Bearer " + googleToken }
+    });
+
+    if(resp.status === 401){
+      googleToken = null;
+      if(msg){ msg.textContent="⚠ Sesión expirada — hacé click en Actualizar para reconectar"; msg.style.color="var(--amber)"; }
+      setSyncUI("off");
+      return;
+    }
+
+    if(!resp.ok) throw new Error("HTTP " + resp.status);
+    const data = await resp.json();
+    const rows = data.values || [];
+    if(rows.length <= 1){
+      setSyncUI("ok");
+      if(msg){ msg.textContent="✓ Sheet conectado — sin movimientos aún"; msg.style.color="var(--green)"; }
+      return;
+    }
+
+    const headers = rows[0];
+    const movimientos = rows.slice(1).map(row => {
+      const m = {};
+      headers.forEach((h,i) => m[h] = row[i] || "");
+      return {
+        id: Number(m["Remito N°"]) || 0,
+        ts: new Date(m["Timestamp"]).getTime() || 0,
+        tipo: tipoFromLabel(m["Tipo"]),
+        dia: Number(String(m["Día"]).replace("Día ","")),
+        stand: m["Stand"],
+        unidades: Number(m["Unidades"]) || 0,
+        montoCobrado: Number(m["Monto Cobrado"]) || 0,
+        vendidos: Number(m["Vendidos"]) || 0,
+        notas: m["Notas"] || "",
+        whatsapp: m["WhatsApp"] || "",
+        firma: m["Firma"] || ""
+      };
+    }).filter(m => m.stand);
+
+    const existingIds = new Set(state.movimientos.map(m=>String(m.id)));
+    let nuevos = 0;
+    movimientos.forEach(m => {
+      if(!existingIds.has(String(m.id))){
+        state.movimientos.push(m);
+        nuevos++;
+      }
+    });
+
+    state.lastSync = Date.now();
+    saveState();
+    setSyncUI("ok");
+    if(msg){ msg.textContent="✓ Sincronizado — " + nuevos + " movimientos nuevos — Total: " + state.movimientos.length; msg.style.color="var(--green)"; }
+    renderDashboard();
+    renderHistorial();
+
   } catch(err){
     setSyncUI("off");
-    if(msg){ 
-      msg.textContent="⚠ " + err.message; 
-      msg.style.color="var(--red)"; 
-    }
+    if(msg){ msg.textContent="⚠ " + err.message; msg.style.color="var(--red)"; }
     console.error("Sync error:", err);
   }
+}
+
+function tipoFromLabel(label){
+  if(label==="Entrega inicial") return "entrega";
+  if(label==="Reposición") return "reposicion";
+  if(label==="Devolución") return "devolucion";
+  return label || "";
 }
 
 function setSyncUI(s){
@@ -657,8 +750,15 @@ function resetData(){ state.movimientos=[]; state.ajustes={}; saveState(); rende
 
 window.addEventListener("DOMContentLoaded",()=>{
   loadState(); renderDashboard();
-  setSyncUI(navigator.onLine?"off":"off");
-  if(navigator.onLine) syncFromSheet();
+  setSyncUI("off");
+  // Init Google Auth when GSI library loads
+  window.addEventListener("load", () => {
+    if(typeof google !== "undefined" && google.accounts){
+      if(navigator.onLine) syncFromSheet();
+    } else {
+      setTimeout(()=>{ if(navigator.onLine) syncFromSheet(); }, 2000);
+    }
+  });
 });
 </script>
 </body>
