@@ -685,7 +685,7 @@ async function syncFromSheet(){
         dia: Number(String(m["Día"]).replace("Día ","")),
         stand: m["Stand"],
         unidades: Number(m["Unidades"]) || 0,
-        montoCobrado: Number(m["Monto Cobrado"]) || 0,
+        montoCobrado: Number(m["Monto Cobrado"]) || (Number(m["Precio"]) * Number(m["Unidades"])) || 0,
         vendidos: Number(m["Vendidos"]) || 0,
         notas: m["Notas"] || "",
         whatsapp: m["WhatsApp"] || "",
