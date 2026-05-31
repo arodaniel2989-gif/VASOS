@@ -419,8 +419,17 @@ function fmt(n){ return Math.round(n).toLocaleString("es-AR"); }
 function fmtM(n){ return "$"+fmt(n); }
 function fmtDate(ts){ return new Date(ts).toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }
 
-function calcMontoBase(stand, vendidos){
+function calcMontoBase(stand, vendidos, dia){
+  // Bonificacion es POR DIA: primeros 100 vasos de cada dia al precio bonificado
   if(BONIF_STANDS.includes(stand)){
+    if(dia === 0){
+      // Total evento: calcular dia por dia para aplicar bonif correctamente
+      const d1 = getMovsByDay(1).filter(m=>m.stand===stand);
+      const d2 = getMovsByDay(2).filter(m=>m.stand===stand);
+      const vend1 = Math.max(0, d1.filter(m=>m.tipo!=="devolucion").reduce((a,m)=>a+(+m.unidades||0),0) - d1.filter(m=>m.tipo==="devolucion").reduce((a,m)=>a+(+m.unidades||0),0));
+      const vend2 = Math.max(0, d2.filter(m=>m.tipo!=="devolucion").reduce((a,m)=>a+(+m.unidades||0),0) - d2.filter(m=>m.tipo==="devolucion").reduce((a,m)=>a+(+m.unidades||0),0));
+      return calcMontoBase(stand, vend1, 1) + calcMontoBase(stand, vend2, 2);
+    }
     return Math.min(vendidos, UMBRAL_BONIF)*PRECIO_BONIF + Math.max(0, vendidos-UMBRAL_BONIF)*PRECIO_NORMAL;
   }
   return vendidos * PRECIO_NORMAL;
@@ -437,7 +446,7 @@ function getStandStats(stand, dia){
   const cobroFinal = devMovs.reduce((a,m)=>a+(+m.montoCobrado||0),0);
   const vendidos = Math.max(0, entregado - devuelto);
   const cobradoTotal = cobradoParcial + cobroFinal;
-  const montoBase = calcMontoBase(stand, vendidos);
+  const montoBase = calcMontoBase(stand, vendidos, dia);
   const ajuste = state.ajustes[`${stand}_${dia}`];
   const montoFinal = ajuste !== undefined ? ajuste : montoBase;
   const saldo = Math.max(0, montoFinal - cobradoTotal);
@@ -557,7 +566,7 @@ function renderLiquidacion(){
       <div class="liq-row"><span class="text-muted">Vasos entregados</span><span>${fmt(d.entregado)}</span></div>
       <div class="liq-row"><span class="text-muted">Vasos devueltos</span><span>${fmt(d.devuelto)}</span></div>
       <div class="liq-row"><span class="text-muted">Vasos vendidos</span><span><strong>${fmt(d.vendidos)}</strong></span></div>
-      ${bonif?`<div class="liq-row"><span class="text-muted">Precio</span><span>${Math.min(d.vendidos,UMBRAL_BONIF)} u × $${fmt(PRECIO_BONIF)} + ${Math.max(0,d.vendidos-UMBRAL_BONIF)} u × $${fmt(PRECIO_NORMAL)}</span></div>`:`<div class="liq-row"><span class="text-muted">Precio</span><span>${fmt(PRECIO_NORMAL)}/u</span></div>`}
+      ${bonif?`<div class="liq-row"><span class="text-muted">Precio</span><span>Primeros ${fmt(UMBRAL_BONIF)} u/día × $${fmt(PRECIO_BONIF)} + resto × $${fmt(PRECIO_NORMAL)}</span></div>`:`<div class="liq-row"><span class="text-muted">Precio</span><span>${fmt(PRECIO_NORMAL)}/u</span></div>`}
       <div class="liq-row"><span class="text-muted">Monto base</span><span>${fmtM(d.montoBase)}</span></div>
       ${ajustado?`<div class="liq-row"><span class="text-muted">Monto ajustado</span><span style="color:var(--amber)">${fmtM(d.montoFinal)}</span></div>`:""}
       <div class="liq-row"><span class="text-muted">Cobrado parcial</span><span style="color:var(--green)">${fmtM(d.cobradoTotal)}</span></div>
