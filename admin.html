@@ -440,7 +440,7 @@ function getMovsByDay(d){ return d===0?state.movimientos:state.movimientos.filte
 function getStandStats(stand, dia){
   const movs = getMovsByDay(dia).filter(m=>m.stand===stand);
   const entregado = movs.filter(m=>m.tipo!=="devolucion").reduce((a,m)=>a+(+m.unidades||0),0);
-  const cobradoParcial = movs.filter(m=>m.tipo==="reposicion"&&m.montoCobrado).reduce((a,m)=>a+(+m.montoCobrado||0),0);
+  const cobradoParcial = movs.filter(m=>(m.tipo==="reposicion"||m.tipo==="cobro_parcial")&&m.montoCobrado
   const devMovs = movs.filter(m=>m.tipo==="devolucion");
   const devuelto = devMovs.reduce((a,m)=>a+(+m.unidades||0),0);
   const cobroFinal = devMovs.reduce((a,m)=>a+(+m.montoCobrado||0),0);
