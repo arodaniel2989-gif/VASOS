@@ -110,10 +110,11 @@ button:disabled{opacity:.35;cursor:not-allowed}
 <body>
 
 <nav>
-  <span class="nav-brand"><i class="ti ti-beer" aria-hidden="true"></i> Ecovasos</span>
+  <span class="nav-brand" onclick="secretTap()" style="cursor:default"><i class="ti ti-beer" aria-hidden="true"></i> Ecovasos</span>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showTab('registrar')"><i class="ti ti-plus"></i> Registrar</button>
-    <button class="nav-tab" onclick="showTab('entregas')"><i class="ti ti-list"></i> Mis entregas</button>
+    <button class="nav-tab" onclick="showTab('cobro')"><i class="ti ti-coin"></i> Cobrar</button>
+    <button class="nav-tab" onclick="showTab('entregas')"><i class="ti ti-list"></i> Entregas</button>
   </div>
   <div id="stock-pill" style="margin-left:auto;margin-right:.5rem;font-size:11px;padding:.3rem .65rem;border-radius:20px;background:var(--green-bg);color:var(--green-text);display:flex;align-items:center;gap:4px;white-space:nowrap">
     <i class="ti ti-stack-2"></i> <span id="stock-pill-text">...</span>
@@ -226,6 +227,56 @@ button:disabled{opacity:.35;cursor:not-allowed}
 
 </main>
 
+<!-- TAB COBRO -->
+<div id="tab-cobro" style="display:none">
+  <div class="card">
+    <h2 style="font-size:16px;font-weight:500;margin-bottom:1rem">Registrar cobro</h2>
+
+    <div class="form-row">
+      <label>Stand</label>
+      <select id="cobro-stand" onchange="updateCobroStand()">
+        <option value="">— Seleccionar —</option>
+      </select>
+    </div>
+
+    <div id="cobro-saldo-box" style="display:none;background:var(--bg2);border-radius:var(--radius);padding:.875rem;margin-bottom:.875rem">
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem">Saldo pendiente</div>
+      <div id="cobro-saldo-monto" style="font-size:22px;font-weight:500;color:var(--green)"></div>
+      <div id="cobro-saldo-detalle" class="text-sm text-muted" style="margin-top:2px"></div>
+    </div>
+
+    <div class="form-row">
+      <label>Monto a cobrar ahora</label>
+      <input type="number" id="cobro-monto-input" min="0" placeholder="Ej: 150000" oninput="updateCobroPreview()">
+      <div id="cobro-preview" class="text-sm text-muted" style="margin-top:.35rem"></div>
+    </div>
+
+    <div class="form-row">
+      <label>Notas (opcional)</label>
+      <input type="text" id="cobro-notas" placeholder="Ej: Pago parcial en efectivo">
+    </div>
+
+    <button class="success" onclick="registrarCobro()" style="width:100%;padding:.65rem">
+      <i class="ti ti-check"></i> Confirmar cobro en efectivo
+    </button>
+  </div>
+</div>
+
+<!-- MODAL RESET SECRETO -->
+<div class="modal-bg" id="modal-reset">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 style="font-size:16px"><i class="ti ti-trash"></i> Reset de datos</h2>
+      <button onclick="closeModal('modal-reset')" style="border:none;background:none;font-size:20px;cursor:pointer;padding:0"><i class="ti ti-x"></i></button>
+    </div>
+    <p class="text-sm text-muted">Esto borra todos los datos locales de esta app. Los datos en el Sheet no se modifican.</p>
+    <div class="flex gap-2 mt-2">
+      <button class="danger" onclick="resetEncargado()" style="flex:1"><i class="ti ti-trash"></i> Borrar datos locales</button>
+      <button onclick="closeModal('modal-reset')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL REMITO -->
 <div class="modal-bg" id="modal-remito">
   <div class="modal">
@@ -318,10 +369,26 @@ function populateStands(){
 
 function showTab(t){
   document.getElementById("tab-registrar").style.display = t==="registrar"?"block":"none";
+  document.getElementById("tab-cobro").style.display = t==="cobro"?"block":"none";
   document.getElementById("tab-entregas").style.display = t==="entregas"?"block":"none";
-  document.querySelectorAll(".nav-tab").forEach((b,i)=>b.classList.toggle("active",["registrar","entregas"][i]===t));
+  document.querySelectorAll(".nav-tab").forEach((b,i)=>b.classList.toggle("active",["registrar","cobro","entregas"][i]===t));
   if(t==="registrar") renderMetrics();
   if(t==="entregas") renderEntregas();
+  if(t==="cobro") populateCobroStands();
+}
+
+function populateCobroStands(){
+  const sel = document.getElementById("cobro-stand");
+  sel.innerHTML = "<option value=''>— Seleccionar —</option>";
+  STANDS.forEach(s=>{
+    const entregado = getStandEntregado(s, 2);
+    if(entregado === 0) return;
+    const pendiente = calcCobroPendiente(s, 2);
+    const o = document.createElement("option");
+    o.value = s;
+    o.textContent = s + (pendiente > 0 ? " — Debe: " + fmtM(pendiente) : " ✓");
+    sel.appendChild(o);
+  });
 }
 
 function renderMetrics(){
@@ -674,6 +741,168 @@ function updateStockPill(){
     pill.style.background="var(--green-bg)";
     pill.style.color="var(--green-text)";
   }
+}
+
+/* COBRO INDEPENDIENTE */
+function updateCobroStand(){
+  const stand = document.getElementById("cobro-stand").value;
+  const box = document.getElementById("cobro-saldo-box");
+  if(!stand){ box.style.display="none"; return; }
+  const dia = 2;
+  const entregado = getStandEntregado(stand, dia);
+  const cobrado = getStandCobrado(stand, dia);
+  const pendiente = calcCobroPendiente(stand, dia);
+  box.style.display = "block";
+  document.getElementById("cobro-saldo-monto").textContent = fmtM(pendiente);
+  document.getElementById("cobro-saldo-detalle").textContent = 
+    "Entregado: " + fmt(entregado) + "u — Cobrado: " + fmtM(cobrado);
+  document.getElementById("cobro-monto-input").value = pendiente || "";
+  updateCobroPreview();
+}
+
+function updateCobroPreview(){
+  const stand = document.getElementById("cobro-stand").value;
+  if(!stand) return;
+  const monto = +document.getElementById("cobro-monto-input").value || 0;
+  const pendiente = calcCobroPendiente(stand, 2);
+  const restante = Math.max(0, pendiente - monto);
+  document.getElementById("cobro-preview").textContent = 
+    restante > 0 ? "Saldo restante después de este cobro: " + fmtM(restante) : "✓ Saldo cancelado completamente";
+}
+
+function registrarCobro(){
+  const stand = document.getElementById("cobro-stand").value;
+  const monto = +document.getElementById("cobro-monto-input").value;
+  const notas = document.getElementById("cobro-notas").value.trim();
+  if(!stand){ alert("Seleccioná un stand."); return; }
+  if(!monto || monto <= 0){ alert("Ingresá el monto cobrado."); return; }
+
+  const saldoAntes = calcCobroPendiente(stand, 2);
+  const saldoRestante = Math.max(0, saldoAntes - monto);
+  const mov = {
+    id: Date.now(), ts: Date.now(),
+    tipo: "cobro_parcial", dia: 2,
+    stand, notas, montoCobrado: monto,
+    unidades: 0, cobrado: true, firma: "",
+    saldoRestante
+  };
+  state.movimientos.push(mov);
+  state.syncQueue.push(mov.id);
+  saveState();
+
+  document.getElementById("cobro-stand").value = "";
+  document.getElementById("cobro-saldo-box").style.display = "none";
+  document.getElementById("cobro-monto-input").value = "";
+  document.getElementById("cobro-notas").value = "";
+  document.getElementById("cobro-preview").textContent = "";
+  renderMetrics();
+  updateStockPill();
+
+  // Mostrar recibo
+  pendingRemito = mov;
+  mostrarReciboCobro(mov, saldoAntes, saldoRestante);
+}
+
+function mostrarReciboCobro(mov, saldoAntes, saldoRestante){
+  const whatsapp = (state.movimientos.find(m=>m.stand===mov.stand&&m.whatsapp)||{}).whatsapp || "";
+  const tipoClass = "green";
+
+  document.getElementById("remito-preview").innerHTML = `
+    <div style="border:0.5px solid var(--border);border-radius:var(--radius);padding:1.25rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+        <div><strong style="font-size:15px">BirraFest VII — Ecovasos</strong><br><span class="text-sm text-muted">Recibo de cobro N° ${mov.id}</span></div>
+        <div style="text-align:right"><span class="badge green">Cobro en efectivo</span><br><span class="text-sm text-muted">${fmtDate(mov.ts)}</span></div>
+      </div>
+      <div class="liq-row"><span class="text-muted">Stand</span><strong>${mov.stand}</strong></div>
+      <div class="liq-row"><span class="text-muted">Día</span><span>Día ${mov.dia}</span></div>
+      <div class="liq-row"><span class="text-muted">Saldo anterior</span><span>${fmtM(saldoAntes)}</span></div>
+      <div class="liq-row"><span class="text-muted">Monto cobrado</span><span style="color:var(--green);font-weight:500">${fmtM(mov.montoCobrado)}</span></div>
+      <div class="liq-row"><span class="text-muted">Saldo restante</span><span style="color:var(--${saldoRestante>0?"red":"green"});font-weight:500">${fmtM(saldoRestante)}</span></div>
+      ${mov.notas?`<div class="liq-row"><span class="text-muted">Notas</span><span>${mov.notas}</span></div>`:""}
+    </div>`;
+
+  // Override WhatsApp button for cobro
+  const modalFooter = document.querySelector("#modal-remito .flex");
+  if(modalFooter){
+    modalFooter.innerHTML = `
+      <button class="primary" onclick="descargarPDFCobro(${mov.id},${saldoAntes},${saldoRestante})"><i class="ti ti-download"></i> PDF</button>
+      <button class="success" onclick="enviarWhatsAppCobro(${mov.id},${saldoAntes},${saldoRestante},'${whatsapp}')"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
+      <button onclick="closeModal('modal-remito')">Cerrar</button>`;
+  }
+  document.getElementById("modal-remito").classList.add("open");
+}
+
+function enviarWhatsAppCobro(id, saldoAntes, saldoRestante, whatsapp){
+  const mov = state.movimientos.find(m=>m.id===id);
+  if(!mov) return;
+  const texto = `*BirraFest VII — Ecovasos*
+` +
+    `Recibo de cobro N° ${mov.id}
+` +
+    `*Stand:* ${mov.stand}
+` +
+    `Saldo anterior: ${fmtM(saldoAntes)}
+` +
+    `*Cobrado:* ${fmtM(mov.montoCobrado)}
+` +
+    `*Saldo restante: ${fmtM(saldoRestante)}*
+` +
+    (mov.notas?`Notas: ${mov.notas}
+`:"") +
+    `_${fmtDate(mov.ts)}_`;
+  const encoded = encodeURIComponent(texto);
+  window.open(whatsapp ? `https://wa.me/549${whatsapp}?text=${encoded}` : `https://wa.me/?text=${encoded}`);
+}
+
+function descargarPDFCobro(id, saldoAntes, saldoRestante){
+  const mov = state.movimientos.find(m=>m.id===id);
+  if(!mov) return;
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit:"mm",format:"a5"});
+  doc.setFontSize(13); doc.setFont(undefined,"bold");
+  doc.text("BirraFest VII — Ecovasos",15,18);
+  doc.setFontSize(9); doc.setFont(undefined,"normal");
+  doc.text(`Recibo de cobro N° ${mov.id}`,15,24);
+  doc.setFontSize(10); doc.setFont(undefined,"bold");
+  doc.text("Cobro en efectivo",133,18,{align:"right"});
+  doc.setFontSize(9); doc.setFont(undefined,"normal");
+  doc.text(fmtDate(mov.ts),133,24,{align:"right"});
+  doc.setDrawColor(200); doc.line(15,27,133,27);
+  const rows = [
+    ["Stand", mov.stand],
+    ["Día", "Día " + mov.dia],
+    ["Saldo anterior", fmtM(saldoAntes)],
+    ["Monto cobrado", fmtM(mov.montoCobrado)],
+    ["Saldo restante", fmtM(saldoRestante)],
+  ];
+  if(mov.notas) rows.push(["Notas", mov.notas]);
+  let y = 35;
+  rows.forEach(([k,v])=>{ doc.setFont(undefined,"normal"); doc.setTextColor(120); doc.text(k,15,y); doc.setFont(undefined,"bold"); doc.setTextColor(30); doc.text(v,60,y); y+=8; });
+  doc.save(`cobro_${mov.stand.replace(/[\s—]+/g,"_")}_${mov.id}.pdf`);
+}
+
+/* SECRET RESET */
+let tapCount = 0;
+let tapTimer = null;
+function secretTap(){
+  tapCount++;
+  clearTimeout(tapTimer);
+  tapTimer = setTimeout(()=>{ tapCount=0; }, 2000);
+  if(tapCount >= 5){
+    tapCount = 0;
+    document.getElementById("modal-reset").classList.add("open");
+  }
+}
+
+function resetEncargado(){
+  state.movimientos = [];
+  state.syncQueue = [];
+  saveState();
+  closeModal("modal-reset");
+  renderMetrics();
+  updateStockPill();
+  renderEntregas();
+  alert("✓ Datos locales borrados.");
 }
 
 /* Sync */

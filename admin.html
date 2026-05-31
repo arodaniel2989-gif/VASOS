@@ -115,6 +115,7 @@ tr:hover td{background:var(--bg2)}
     <button class="nav-tab active" onclick="showSection('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
     <button class="nav-tab" onclick="showSection('historial')"><i class="ti ti-list"></i> Historial</button>
     <button class="nav-tab" onclick="showSection('liquidacion')"><i class="ti ti-report-money"></i> Liquidación</button>
+    <button class="nav-tab" onclick="showSection('cobros')"><i class="ti ti-coin"></i> Cobros</button>
     <button class="nav-tab" onclick="showSection('config')"><i class="ti ti-settings"></i> Config</button>
   </div>
   <div class="sync-area">
@@ -204,6 +205,63 @@ tr:hover td{background:var(--bg2)}
     </select>
   </div>
   <div id="liq-list"></div>
+</section>
+
+<!-- COBROS -->
+<section id="section-cobros" style="display:none">
+  <div class="section-header">
+    <h2>Registrar cobro</h2>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Stand</label>
+        <select id="admin-cobro-stand" onchange="updateAdminCobroStand()">
+          <option value="">— Seleccionar —</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Día</label>
+        <select id="admin-cobro-dia" onchange="updateAdminCobroStand()">
+          <option value="1">Día 1</option>
+          <option value="2" selected>Día 2</option>
+          <option value="0">Total evento</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="admin-cobro-saldo-box" style="display:none;background:var(--bg2);border-radius:var(--radius);padding:.875rem;margin-bottom:.875rem">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;text-align:center">
+        <div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Entregado</div><div style="font-weight:500" id="admin-cobro-entregado">—</div></div>
+        <div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Cobrado</div><div style="font-weight:500;color:var(--green)" id="admin-cobro-cobrado">—</div></div>
+        <div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Saldo</div><div style="font-weight:500;color:var(--red)" id="admin-cobro-saldo">—</div></div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Monto a cobrar</label>
+      <input type="number" id="admin-cobro-monto" min="0" placeholder="Ej: 300000" oninput="updateAdminCobroPreview()">
+      <div id="admin-cobro-preview" class="text-sm text-muted" style="margin-top:.35rem"></div>
+    </div>
+
+    <div class="form-row">
+      <label>Notas (opcional)</label>
+      <input type="text" id="admin-cobro-notas" placeholder="Ej: Pago parcial en efectivo">
+    </div>
+
+    <button class="success" onclick="registrarCobroAdmin()" style="width:100%;padding:.65rem">
+      <i class="ti ti-check"></i> Confirmar cobro en efectivo
+    </button>
+  </div>
+
+  <div class="card mt-card">
+    <h2 style="margin-bottom:.875rem">Historial de cobros</h2>
+    <table>
+      <thead><tr><th>Fecha/Hora</th><th>Stand</th><th>Día</th><th>Monto</th><th>Notas</th></tr></thead>
+      <tbody id="cobros-tbody"></tbody>
+    </table>
+    <div id="cobros-empty" class="empty-state" style="display:none"><i class="ti ti-coin"></i><br>Sin cobros registrados</div>
+  </div>
 </section>
 
 <!-- CONFIG -->
@@ -388,13 +446,14 @@ function getStandStats(stand, dia){
 }
 
 function showSection(id){
-  ["dashboard","historial","liquidacion","config"].forEach(s=>{
+  ["dashboard","historial","liquidacion","cobros","config"].forEach(s=>{
     document.getElementById("section-"+s).style.display = s===id?"block":"none";
   });
-  document.querySelectorAll(".nav-tab").forEach((t,i)=>t.classList.toggle("active",["dashboard","historial","liquidacion","config"][i]===id));
+  document.querySelectorAll(".nav-tab").forEach((t,i)=>t.classList.toggle("active",["dashboard","historial","liquidacion","cobros","config"][i]===id));
   if(id==="dashboard") renderDashboard();
   if(id==="historial") renderHistorial();
   if(id==="liquidacion") renderLiquidacion();
+  if(id==="cobros") initCobroSection();
 }
 
 function setDay(d,btn){
@@ -894,6 +953,179 @@ function enviarWhatsApp(){
   const texto=`*BirraFest VII — Ecovasos*\nRemito N° ${mov.id}\n${tipoLabel[mov.tipo]||mov.tipo} — Día ${mov.dia}\n*Stand:* ${mov.stand}\n${detalle}\n_${fmtDate(mov.ts||Date.now())}_`;
   const encoded=encodeURIComponent(texto);
   window.open(mov.whatsapp?`https://wa.me/549${mov.whatsapp}?text=${encoded}`:`https://wa.me/?text=${encoded}`);
+}
+
+/* COBROS ADMIN */
+function initCobroSection(){
+  const sel = document.getElementById("admin-cobro-stand");
+  sel.innerHTML = "<option value=''>— Seleccionar —</option>";
+  const dia = +document.getElementById("admin-cobro-dia").value;
+  STANDS.forEach(s=>{
+    const d = getStandStats(s, dia);
+    if(d.entregado === 0) return;
+    const o = document.createElement("option");
+    o.value = s;
+    o.textContent = s + (d.saldo > 0 ? " — Debe: " + fmtM(d.saldo) : " ✓");
+    sel.appendChild(o);
+  });
+  renderCobrosHistorial();
+}
+
+function updateAdminCobroStand(){
+  const stand = document.getElementById("admin-cobro-stand").value;
+  const dia = +document.getElementById("admin-cobro-dia").value;
+  const box = document.getElementById("admin-cobro-saldo-box");
+  if(!stand){ box.style.display="none"; return; }
+  const d = getStandStats(stand, dia);
+  box.style.display = "block";
+  document.getElementById("admin-cobro-entregado").textContent = fmt(d.entregado) + "u";
+  document.getElementById("admin-cobro-cobrado").textContent = fmtM(d.cobradoTotal);
+  document.getElementById("admin-cobro-saldo").textContent = fmtM(d.saldo);
+  document.getElementById("admin-cobro-monto").value = d.saldo || "";
+  updateAdminCobroPreview();
+}
+
+function updateAdminCobroPreview(){
+  const stand = document.getElementById("admin-cobro-stand").value;
+  const dia = +document.getElementById("admin-cobro-dia").value;
+  if(!stand) return;
+  const monto = +document.getElementById("admin-cobro-monto").value || 0;
+  const d = getStandStats(stand, dia);
+  const restante = Math.max(0, d.saldo - monto);
+  document.getElementById("admin-cobro-preview").textContent =
+    restante > 0 ? "Saldo restante: " + fmtM(restante) : "✓ Saldo cancelado completamente";
+}
+
+function registrarCobroAdmin(){
+  const stand = document.getElementById("admin-cobro-stand").value;
+  const dia = +document.getElementById("admin-cobro-dia").value || 2;
+  const monto = +document.getElementById("admin-cobro-monto").value;
+  const notas = document.getElementById("admin-cobro-notas").value.trim();
+  if(!stand){ alert("Seleccioná un stand."); return; }
+  if(!monto || monto <= 0){ alert("Ingresá el monto cobrado."); return; }
+  const dAntes = getStandStats(stand, dia);
+  const saldoAntes = dAntes.saldo;
+  const saldoRestante = Math.max(0, saldoAntes - monto);
+  const mov = {
+    id: Date.now(), ts: Date.now(),
+    tipo: "cobro_parcial", dia,
+    stand, notas, montoCobrado: monto,
+    unidades: 0, cobrado: true, firma: "",
+    saldoRestante
+  };
+  state.movimientos.push(mov);
+  saveState();
+  // Sync al Sheet
+  const tipoLabel = {entrega:"Entrega inicial",reposicion:"Reposición",devolucion:"Devolución",cobro_parcial:"Cobro parcial"};
+  fetch(APPS_SCRIPT_URL, {
+    method:"POST", mode:"no-cors",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      timestamp: fmtDate(mov.ts), dia: "Día " + dia, stand, tipo: "Cobro parcial",
+      unidades: 0, montoCobrado: monto, vendidos: "", remitoId: mov.id, notas, whatsapp: "", firma: ""
+    })
+  }).catch(()=>{});
+  document.getElementById("admin-cobro-stand").value = "";
+  document.getElementById("admin-cobro-saldo-box").style.display = "none";
+  document.getElementById("admin-cobro-monto").value = "";
+  document.getElementById("admin-cobro-notas").value = "";
+  document.getElementById("admin-cobro-preview").textContent = "";
+  renderDashboard();
+  renderCobrosHistorial();
+  initCobroSection();
+  mostrarReciboCobro(mov, saldoAntes, saldoRestante);
+}
+
+function mostrarReciboCobro(mov, saldoAntes, saldoRestante){
+  const whatsapp = mov.whatsapp || (state.movimientos.find(m=>m.stand===mov.stand&&m.whatsapp)||{}).whatsapp || "";
+  document.getElementById("remito-preview").innerHTML = `
+    <div style="border:0.5px solid var(--border);border-radius:var(--radius);padding:1.25rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+        <div><strong>BirraFest VII — Ecovasos</strong><br><span class="text-sm text-muted">Recibo de cobro N° ${mov.id}</span></div>
+        <div style="text-align:right"><span class="badge green">Cobro en efectivo</span><br><span class="text-sm text-muted">${fmtDate(mov.ts||Date.now())}</span></div>
+      </div>
+      <div class="liq-row"><span class="text-muted">Stand</span><strong>${mov.stand}</strong></div>
+      <div class="liq-row"><span class="text-muted">Día</span><span>Día ${mov.dia}</span></div>
+      <div class="liq-row"><span class="text-muted">Saldo anterior</span><span>${fmtM(saldoAntes)}</span></div>
+      <div class="liq-row"><span class="text-muted">Monto cobrado</span><span style="color:var(--green);font-weight:500">${fmtM(mov.montoCobrado||0)}</span></div>
+      <div class="liq-row"><span class="text-muted">Saldo restante</span><span style="color:var(--${saldoRestante>0?"red":"green"});font-weight:500">${fmtM(saldoRestante)}</span></div>
+      ${mov.notas?`<div class="liq-row"><span class="text-muted">Notas</span><span>${mov.notas}</span></div>`:""}
+    </div>`;
+  pendingRemito = mov;
+  // Update modal buttons for cobro
+  const footer = document.querySelector("#modal-remito .flex");
+  if(footer){
+    footer.innerHTML = `
+      <button class="primary" onclick="descargarPDFCobro()"><i class="ti ti-download"></i> PDF</button>
+      <button class="success" onclick="enviarWhatsAppCobro('${whatsapp}',${saldoAntes},${saldoRestante})"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
+      <button onclick="closeModal('modal-remito')">Cerrar</button>`;
+  }
+  document.getElementById("modal-remito").classList.add("open");
+}
+
+function enviarWhatsAppCobro(whatsapp, saldoAntes, saldoRestante){
+  const mov = pendingRemito;
+  if(!mov) return;
+  const texto = `*BirraFest VII — Ecovasos*
+` +
+    `Recibo de cobro N° ${mov.id}
+` +
+    `*Stand:* ${mov.stand}
+` +
+    `Saldo anterior: ${fmtM(saldoAntes)}
+` +
+    `*Cobrado:* ${fmtM(mov.montoCobrado||0)}
+` +
+    `*Saldo restante: ${fmtM(saldoRestante)}*
+` +
+    (mov.notas?`Notas: ${mov.notas}
+`:"") +
+    `_${fmtDate(mov.ts||Date.now())}_`;
+  const encoded = encodeURIComponent(texto);
+  window.open(whatsapp ? `https://wa.me/549${whatsapp}?text=${encoded}` : `https://wa.me/?text=${encoded}`);
+}
+
+function descargarPDFCobro(){
+  const mov = pendingRemito;
+  if(!mov) return;
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit:"mm",format:"a5"});
+  doc.setFontSize(13); doc.setFont(undefined,"bold");
+  doc.text("BirraFest VII — Ecovasos",15,18);
+  doc.setFontSize(9); doc.setFont(undefined,"normal");
+  doc.text(`Recibo de cobro N° ${mov.id}`,15,24);
+  doc.setFontSize(10); doc.setFont(undefined,"bold");
+  doc.text("Cobro en efectivo",133,18,{align:"right"});
+  doc.setFontSize(9); doc.setFont(undefined,"normal");
+  doc.text(fmtDate(mov.ts||Date.now()),133,24,{align:"right"});
+  doc.setDrawColor(200); doc.line(15,27,133,27);
+  const d = getStandStats(mov.stand, mov.dia);
+  const rows = [
+    ["Stand", mov.stand],
+    ["Día", "Día " + mov.dia],
+    ["Monto cobrado", fmtM(mov.montoCobrado||0)],
+    ["Saldo restante", fmtM(d.saldo)],
+  ];
+  if(mov.notas) rows.push(["Notas", mov.notas]);
+  let y = 35;
+  rows.forEach(([k,v])=>{ doc.setFont(undefined,"normal"); doc.setTextColor(120); doc.text(k,15,y); doc.setFont(undefined,"bold"); doc.setTextColor(30); doc.text(v,60,y); y+=8; });
+  doc.save(`cobro_${mov.stand.replace(/[\s—]+/g,"_")}_${mov.id}.pdf`);
+}
+
+function renderCobrosHistorial(){
+  const tbody = document.getElementById("cobros-tbody");
+  const empty = document.getElementById("cobros-empty");
+  const cobros = state.movimientos.filter(m=>m.tipo==="cobro_parcial"||m.cobrado).reverse();
+  if(!cobros.length){ if(tbody) tbody.innerHTML=""; if(empty) empty.style.display="block"; return; }
+  if(empty) empty.style.display="none";
+  if(tbody) tbody.innerHTML = cobros.map(m=>`
+    <tr>
+      <td class="text-sm">${fmtDate(m.ts||Date.now())}</td>
+      <td><strong>${m.stand}</strong></td>
+      <td>Día ${m.dia}</td>
+      <td style="color:var(--green);font-weight:500">${fmtM(m.montoCobrado||0)}</td>
+      <td class="text-sm text-muted">${m.notas||"—"}</td>
+    </tr>`).join("");
 }
 
 function closeModal(id){ document.getElementById(id).classList.remove("open"); }
