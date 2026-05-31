@@ -382,12 +382,10 @@ function populateCobroStands(){
   const sel = document.getElementById("cobro-stand");
   sel.innerHTML = "<option value=''>— Seleccionar —</option>";
   STANDS.forEach(s=>{
-    const entregado = getStandEntregado(s, 2);
-    if(entregado === 0) return;
     const pendiente = calcCobroPendiente(s, 2);
     const o = document.createElement("option");
     o.value = s;
-    o.textContent = s + (pendiente > 0 ? " — Debe: " + fmtM(pendiente) : " ✓");
+    o.textContent = s + (pendiente > 0 ? " — Debe: " + fmtM(pendiente) : "");
     sel.appendChild(o);
   });
 }
