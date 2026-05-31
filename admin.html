@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ecovasos — Admin</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -276,7 +276,10 @@ tr:hover td{background:var(--bg2)}
       <button class="primary" onclick="syncFromSheet()"><i class="ti ti-refresh"></i> Actualizar desde Sheet</button>
       <button onclick="window.open('https://docs.google.com/spreadsheets/d/1UV0z_zP_qEp0oGQNzSZB4XJpxRUTzpMX-qp28C2l1cg')"><i class="ti ti-external-link"></i> Abrir Sheet</button>
     </div>
-    
+    <div id="google-login-area" style="margin-top:.875rem;padding:.875rem;background:var(--bg2);border-radius:var(--radius);display:none">
+      <div class="text-sm" style="color:var(--text2);margin-bottom:.75rem"><i class="ti ti-lock"></i> Para leer el Sheet necesitás autorizar con tu cuenta Google</div>
+      <div id="google-btn"></div>
+    </div>
     <p id="sync-msg" class="text-sm mt-1"></p>
   </div>
 
@@ -437,7 +440,7 @@ function getMovsByDay(d){ return d===0?state.movimientos:state.movimientos.filte
 function getStandStats(stand, dia){
   const movs = getMovsByDay(dia).filter(m=>m.stand===stand);
   const entregado = movs.filter(m=>m.tipo!=="devolucion").reduce((a,m)=>a+(+m.unidades||0),0);
-  const cobradoParcial = movs.filter(m=>(m.tipo==="reposicion"||m.tipo==="cobro_parcial")&&m.montoCobrado
+  const cobradoParcial = movs.filter(m=>m.tipo==="reposicion"&&m.montoCobrado).reduce((a,m)=>a+(+m.montoCobrado||0),0);
   const devMovs = movs.filter(m=>m.tipo==="devolucion");
   const devuelto = devMovs.reduce((a,m)=>a+(+m.unidades||0),0);
   const cobroFinal = devMovs.reduce((a,m)=>a+(+m.montoCobrado||0),0);
@@ -654,18 +657,78 @@ function eliminarAjuste(){
 }
 
 /* SYNC desde Sheet */
+const CLIENT_ID = "877524301432-fbj7rj7rq88lbdltrc7atp8i8372va7g.apps.googleusercontent.com";
 const SHEET_ID_READ = "1UV0z_zP_qEp0oGQNzSZB4XJpxRUTzpMX-qp28C2l1cg";
-const API_KEY = "AIzaSyDbJN826xPg2TWYZYDGSbD6ijMc958e5ds";
+let googleToken = null;
+
+function initGoogleAuth(){
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: handleGoogleCredential,
+    auto_select: true
+  });
+}
+
+function handleGoogleCredential(response){
+  // Use token client for Sheets API access
+  requestSheetsToken();
+}
+
+function requestSheetsToken(){
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: "https://www.googleapis.com/auth/spreadsheets.readonly",
+    callback: (tokenResponse) => {
+      if(tokenResponse.error){ 
+        console.error("Token error:", tokenResponse);
+        return; 
+      }
+      googleToken = tokenResponse.access_token;
+      document.getElementById("google-login-area").style.display = "none";
+      syncFromSheet();
+    }
+  });
+  tokenClient.requestAccessToken({prompt:""});
+}
 
 async function syncFromSheet(){
   const msg = document.getElementById("sync-msg");
   setSyncUI("pend");
   if(msg){ msg.textContent="Actualizando desde Sheet..."; msg.style.color="var(--amber)"; }
 
+  if(!googleToken){
+    // Show login area
+    document.getElementById("google-login-area").style.display = "block";
+    if(!document.getElementById("google-btn").innerHTML){
+      google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: "https://www.googleapis.com/auth/spreadsheets.readonly",
+        callback: (tokenResponse) => {
+          if(tokenResponse.error) return;
+          googleToken = tokenResponse.access_token;
+          document.getElementById("google-login-area").style.display = "none";
+          syncFromSheet();
+        }
+      }).requestAccessToken({prompt:"consent"});
+    }
+    setSyncUI("off");
+    if(msg){ msg.textContent=""; }
+    return;
+  }
+
   try{
     const range = encodeURIComponent("Ecovasos — BirraFest VII") + "!A:K";
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID_READ}/values/${range}?key=${API_KEY}`;
-    const resp = await fetch(url);
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID_READ}/values/${range}`;
+    const resp = await fetch(url, {
+      headers: { "Authorization": "Bearer " + googleToken }
+    });
+
+    if(resp.status === 401){
+      googleToken = null;
+      if(msg){ msg.textContent="⚠ Sesión expirada — hacé click en Actualizar para reconectar"; msg.style.color="var(--amber)"; }
+      setSyncUI("off");
+      return;
+    }
 
     if(!resp.ok) throw new Error("HTTP " + resp.status);
     const data = await resp.json();
