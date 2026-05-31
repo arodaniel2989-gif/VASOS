@@ -586,7 +586,7 @@ async function syncFromSheet(){
   }
 
   try{
-    const range = "Movimientos!A:K";
+    const range = encodeURIComponent("Ecovasos — BirraFest VII") + "!A:K";
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID_READ}/values/${range}`;
     const resp = await fetch(url, {
       headers: { "Authorization": "Bearer " + googleToken }
