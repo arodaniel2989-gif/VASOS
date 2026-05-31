@@ -661,37 +661,17 @@ async function syncFromSheet(){
   if(msg){ msg.textContent="Actualizando desde Sheet..."; msg.style.color="var(--amber)"; }
 
   try{
-    const range = encodeURIComponent("Ecovasos — BirraFest VII") + "!A:K";
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID_READ}/values/${range}?key=${API_KEY}`;
+    const url = APPS_SCRIPT_URL + "?action=getAll";
     const resp = await fetch(url);
 
     if(!resp.ok) throw new Error("HTTP " + resp.status);
     const data = await resp.json();
-    const rows = data.values || [];
-    if(rows.length <= 1){
+    const movimientos = (data.movimientos || []).filter(m => m.stand);
+    if(movimientos.length === 0){
       setSyncUI("ok");
       if(msg){ msg.textContent="✓ Sheet conectado — sin movimientos aún"; msg.style.color="var(--green)"; }
       return;
     }
-
-    const headers = rows[0];
-    const movimientos = rows.slice(1).map(row => {
-      const m = {};
-      headers.forEach((h,i) => m[h] = row[i] || "");
-      return {
-        id: Number(m["Remito N°"]) || 0,
-        ts: new Date(m["Timestamp"]).getTime() || 0,
-        tipo: tipoFromLabel(m["Tipo"]),
-        dia: Number(String(m["Día"]).replace("Día ","")),
-        stand: m["Stand"],
-        unidades: Number(m["Unidades"]) || 0,
-        montoCobrado: Number(m["Monto Cobrado"]) || (Number(m["Precio"]) * Number(m["Unidades"])) || 0,
-        vendidos: Number(m["Vendidos"]) || 0,
-        notas: m["Notas"] || "",
-        whatsapp: m["WhatsApp"] || "",
-        firma: m["Firma"] || ""
-      };
-    }).filter(m => m.stand);
 
     // Reemplaza completamente con los datos del Sheet (fuente de verdad)
     state.movimientos = movimientos;
