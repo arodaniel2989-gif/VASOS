@@ -690,21 +690,15 @@ async function syncFromSheet(){
       };
     }).filter(m => m.stand);
 
-    const existingIds = new Set(state.movimientos.map(m=>String(m.id)));
-    let nuevos = 0;
-    movimientos.forEach(m => {
-      if(!existingIds.has(String(m.id))){
-        state.movimientos.push(m);
-        nuevos++;
-      }
-    });
-
+    // Reemplaza completamente con los datos del Sheet (fuente de verdad)
+    state.movimientos = movimientos;
     state.lastSync = Date.now();
     saveState();
     setSyncUI("ok");
-    if(msg){ msg.textContent="✓ Sincronizado — " + nuevos + " movimientos nuevos — Total: " + state.movimientos.length; msg.style.color="var(--green)"; }
+    if(msg){ msg.textContent="✓ Sincronizado — " + movimientos.length + " movimientos desde el Sheet"; msg.style.color="var(--green)"; }
     renderDashboard();
     renderHistorial();
+    renderStock();
 
   } catch(err){
     setSyncUI("off");
