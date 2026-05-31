@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ecovasos — Admin</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--bg2:#f5f5f3;--bg3:#eeecea;
+  --text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
+  --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.25);
+  --radius:8px;--radius-lg:12px;
+  --amber:#BA7517;--amber-bg:#FAEEDA;--amber-text:#633806;
+  --green:#3B6D11;--green-bg:#EAF3DE;--green-text:#27500A;
+  --red:#A32D2D;--red-bg:#FCEBEB;--red-text:#791F1F;
+  --blue:#185FA5;--blue-bg:#E6F1FB;--blue-text:#0C447C;
+  --teal:#0F6E56;--teal-bg:#E1F5EE;--teal-text:#085041;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1e1e1c;--bg2:#2a2a28;--bg3:#323230;
+  --text:#f0ede8;--text2:#b4b2a9;--text3:#888780;
+  --border:rgba(255,255,255,0.12);--border2:rgba(255,255,255,0.25);
+  --amber:#EF9F27;--amber-bg:#412402;--amber-text:#FAC775;
+  --green:#97C459;--green-bg:#173404;--green-text:#C0DD97;
+  --red:#E24B4A;--red-bg:#501313;--red-text:#F7C1C1;
+  --blue:#378ADD;--blue-bg:#042C53;--blue-text:#B5D4F4;
+  --teal:#1D9E75;--teal-bg:#04342C;--teal-text:#9FE1CB;
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text);font-size:15px;min-height:100vh}
+h2{font-size:17px;font-weight:500}h3{font-size:15px;font-weight:500}
+
+nav{background:var(--bg);border-bottom:0.5px solid var(--border);padding:0 1.25rem;display:flex;align-items:center;position:sticky;top:0;z-index:100}
+.nav-brand{font-size:14px;font-weight:500;padding:.9rem 0;margin-right:1rem;color:var(--amber)}
+.nav-tabs{display:flex;flex:1;overflow-x:auto}
+.nav-tab{padding:.85rem .85rem;font-size:13px;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--amber);border-bottom-color:var(--amber);font-weight:500}
+.sync-area{margin-left:auto;display:flex;align-items:center;gap:.5rem}
+.sync-pill{font-size:11px;padding:.3rem .65rem;border-radius:20px;background:var(--bg2);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.sync-pill.ok{color:var(--green)}.sync-pill.off{color:var(--text3)}.sync-pill.pend{color:var(--amber)}
+
+main{max-width:960px;margin:0 auto;padding:1.25rem}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
+
+.card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+.card+.card,.mt-card{margin-top:.875rem}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:1rem}
+.metric{background:var(--bg2);border-radius:var(--radius);padding:.875rem;text-align:center}
+.metric-label{font-size:11px;color:var(--text3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+.metric-value{font-size:20px;font-weight:500}
+.metric-value.amber{color:var(--amber)}.metric-value.green{color:var(--green)}.metric-value.red{color:var(--red)}
+
+button{font-family:inherit;font-size:14px;cursor:pointer;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg);color:var(--text);padding:.45rem .9rem;transition:background .15s,transform .1s}
+button:hover{background:var(--bg2)}
+button:active{transform:scale(.98)}
+button.primary{background:var(--amber-bg);border-color:var(--amber);color:var(--amber-text);font-weight:500}
+button.success{background:var(--green-bg);border-color:var(--green);color:var(--green-text)}
+button.danger{background:var(--red-bg);border-color:var(--red);color:var(--red-text)}
+button.sm{padding:.3rem .65rem;font-size:12px}
+button:disabled{opacity:.35;cursor:not-allowed}
+
+label{font-size:13px;color:var(--text2);display:block;margin-bottom:3px}
+input,select{font-family:inherit;font-size:14px;width:100%;padding:.45rem .7rem;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);outline:none}
+input:focus,select:focus{box-shadow:0 0 0 2px var(--amber);border-color:var(--amber)}
+.form-row{margin-bottom:.875rem}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:var(--radius);font-size:11px;font-weight:500}
+.badge.amber{background:var(--amber-bg);color:var(--amber-text)}
+.badge.green{background:var(--green-bg);color:var(--green-text)}
+.badge.red{background:var(--red-bg);color:var(--red-text)}
+.badge.blue{background:var(--blue-bg);color:var(--blue-text)}
+.badge.teal{background:var(--teal-bg);color:var(--teal-text)}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:.5rem .65rem;font-size:11px;font-weight:500;color:var(--text3);border-bottom:0.5px solid var(--border);text-transform:uppercase;letter-spacing:.04em}
+td{padding:.6rem .65rem;border-bottom:0.5px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg2)}
+
+.day-toggle{display:flex;background:var(--bg2);border-radius:var(--radius);padding:3px;width:fit-content;margin-bottom:1.25rem}
+.day-btn{padding:.4rem 1rem;border:none;background:none;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s}
+.day-btn.active{background:var(--bg);color:var(--text);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+.liq-row{display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:0.5px solid var(--border);font-size:14px}
+.liq-row:last-child{border-bottom:none;font-weight:500;font-size:15px;padding-top:.65rem}
+
+/* Ajuste manual */
+.ajuste-box{background:var(--bg2);border-radius:var(--radius);padding:.875rem;margin-top:.875rem}
+.ajuste-title{font-size:12px;color:var(--text2);font-weight:500;margin-bottom:.75rem}
+.tramo-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:.5rem;align-items:center;margin-bottom:.5rem}
+.tramo-label{font-size:12px;color:var(--text3)}
+.tramo-total{font-size:13px;font-weight:500;color:var(--green-text);text-align:right;padding:.3rem 0}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg);border-radius:var(--radius-lg);border:0.5px solid var(--border);padding:1.5rem;width:min(520px,100%);max-height:88vh;overflow-y:auto}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+
+.text-muted{color:var(--text3)}.text-sm{font-size:12px}
+.mt-1{margin-top:.5rem}.mt-2{margin-top:1rem}
+.flex{display:flex}.gap-1{gap:.5rem}.gap-2{gap:.75rem}.items-center{align-items:center}.justify-between{justify-content:space-between}.flex-wrap{flex-wrap:wrap}
+.empty-state{text-align:center;padding:2.5rem 1rem;color:var(--text3)}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand"><i class="ti ti-beer" aria-hidden="true"></i> Admin</span>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showSection('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+    <button class="nav-tab" onclick="showSection('historial')"><i class="ti ti-list"></i> Historial</button>
+    <button class="nav-tab" onclick="showSection('liquidacion')"><i class="ti ti-report-money"></i> Liquidación</button>
+    <button class="nav-tab" onclick="showSection('config')"><i class="ti ti-settings"></i> Config</button>
+  </div>
+  <div class="sync-area">
+    <div class="sync-pill off" id="sync-pill">
+      <i class="ti ti-cloud-off" id="sync-icon"></i>
+      <span id="sync-text">Offline</span>
+    </div>
+    <button class="sm" onclick="syncFromSheet()" title="Actualizar desde Sheet"><i class="ti ti-refresh"></i></button>
+  </div>
+</nav>
+
+<main>
+
+<!-- DASHBOARD -->
+<section id="section-dashboard">
+  <div class="day-toggle">
+    <button class="day-btn active" onclick="setDay(1,this)">Día 1</button>
+    <button class="day-btn" onclick="setDay(2,this)">Día 2</button>
+    <button class="day-btn" onclick="setDay(0,this)">Total</button>
+  </div>
+  <div class="metrics-grid" id="dash-metrics"></div>
+  <div class="card">
+    <div class="section-header"><h2>Estado por stand</h2></div>
+    <table>
+      <thead><tr><th>Stand</th><th>Entregado</th><th>Cobrado</th><th>Devuelto</th><th>Vendidos</th><th>Saldo</th><th>Estado</th></tr></thead>
+      <tbody id="dash-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- HISTORIAL -->
+<section id="section-historial" style="display:none">
+  <div class="section-header">
+    <h2>Historial completo</h2>
+    <div class="flex gap-1 flex-wrap">
+      <select id="hist-dia" onchange="renderHistorial()" style="width:auto">
+        <option value="0">Todos los días</option>
+        <option value="1">Día 1</option>
+        <option value="2">Día 2</option>
+      </select>
+      <select id="hist-tipo" onchange="renderHistorial()" style="width:auto">
+        <option value="">Todos</option>
+        <option value="entrega">Entregas</option>
+        <option value="reposicion">Reposiciones</option>
+        <option value="devolucion">Devoluciones</option>
+      </select>
+      <select id="hist-stand" onchange="renderHistorial()" style="width:auto">
+        <option value="">Todos los stands</option>
+      </select>
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead><tr><th>Fecha/Hora</th><th>Día</th><th>Stand</th><th>Tipo</th><th>Unidades</th><th>Cobro</th><th>Firma</th><th></th></tr></thead>
+      <tbody id="hist-tbody"></tbody>
+    </table>
+    <div id="hist-empty" class="empty-state" style="display:none"><i class="ti ti-clipboard-list"></i><br>Sin movimientos</div>
+  </div>
+</section>
+
+<!-- LIQUIDACION -->
+<section id="section-liquidacion" style="display:none">
+  <div class="section-header">
+    <h2>Liquidación por stand</h2>
+    <select id="liq-dia" onchange="renderLiquidacion()" style="width:auto">
+      <option value="1">Día 1</option>
+      <option value="2">Día 2</option>
+      <option value="0">Total evento</option>
+    </select>
+  </div>
+  <div id="liq-list"></div>
+</section>
+
+<!-- CONFIG -->
+<section id="section-config" style="display:none">
+  <div class="card">
+    <h2>Sincronización con Google Sheets</h2>
+    <p class="text-sm text-muted mt-1">Los datos vienen del teléfono del encargado vía Apps Script.</p>
+    <div style="margin-top:.875rem;padding:.75rem;background:var(--green-bg);border-radius:var(--radius);border:0.5px solid var(--green)">
+      <div class="text-sm" style="color:var(--green-text)"><i class="ti ti-check"></i> <strong>Sheet conectado:</strong> Ecovasos — BirraFest VII</div>
+    </div>
+    <div class="flex gap-2 mt-2 flex-wrap">
+      <button class="primary" onclick="syncFromSheet()"><i class="ti ti-refresh"></i> Actualizar desde Sheet</button>
+      <button onclick="window.open('https://docs.google.com/spreadsheets/d/1UV0z_zP_qEp0oGQNzSZB4XJpxRUTzpMX-qp28C2l1cg')"><i class="ti ti-external-link"></i> Abrir Sheet</button>
+    </div>
+    <p id="sync-msg" class="text-sm mt-1"></p>
+  </div>
+
+  <div class="card mt-card">
+    <h2>Precios configurados</h2>
+    <div class="flex gap-2 mt-2 flex-wrap" style="font-size:14px">
+      <div style="padding:.5rem .875rem;background:var(--bg2);border-radius:var(--radius)">Precio normal: <strong>$2.000/u</strong></div>
+      <div style="padding:.5rem .875rem;background:var(--amber-bg);border-radius:var(--radius);color:var(--amber-text)">Precio bonificado: <strong>$1.500/u</strong></div>
+      <div style="padding:.5rem .875rem;background:var(--blue-bg);border-radius:var(--radius);color:var(--blue-text)">Umbral bonif.: <strong>100 vasos</strong></div>
+    </div>
+    <p class="text-sm text-muted mt-1">10 stands tienen bonificación automática en los primeros 100 vasos.</p>
+  </div>
+
+  <div class="card mt-card">
+    <h2>Datos</h2>
+    <div class="flex gap-2 mt-2 flex-wrap">
+      <button onclick="exportarJSON()"><i class="ti ti-download"></i> Exportar JSON</button>
+      <button class="danger" onclick="if(confirm('¿Borrar todos los datos locales?'))resetData()"><i class="ti ti-trash"></i> Reset local</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- MODAL REMITO -->
+<div class="modal-bg" id="modal-remito">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 style="font-size:16px"><i class="ti ti-file-check"></i> Remito</h2>
+      <button onclick="closeModal('modal-remito')" style="border:none;background:none;font-size:20px;cursor:pointer;padding:0"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="remito-preview"></div>
+    <div class="flex gap-2 mt-2 flex-wrap" style="margin-top:1rem">
+      <button class="primary" onclick="descargarPDF()"><i class="ti ti-download"></i> PDF</button>
+      <button class="success" onclick="enviarWhatsApp()"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
+      <button onclick="closeModal('modal-remito')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AJUSTE -->
+<div class="modal-bg" id="modal-ajuste">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 style="font-size:16px"><i class="ti ti-adjustments"></i> Ajuste manual — <span id="ajuste-stand-name"></span></h2>
+      <button onclick="closeModal('modal-ajuste')" style="border:none;background:none;font-size:20px;cursor:pointer;padding:0"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="ajuste-content"></div>
+    <div class="flex gap-2 mt-2 flex-wrap" style="margin-top:1rem">
+      <button class="primary" onclick="guardarAjuste()"><i class="ti ti-check"></i> Guardar ajuste</button>
+      <button onclick="closeModal('modal-ajuste')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxCpiSA468ihsVrKeXM94oJsXJLCdeg5culd1gHWtKBA2fU4GC-6SplKNjTyfWoaRwt5Q/exec";
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/1UV0z_zP_qEp0oGQNzSZB4XJpxRUTzpMX-qp28C2l1cg";
+
+const STANDS = [
+  "338 Cerveceria","Infiernillo Cerveceria","BDC","Barbero Cerveceria",
+  "Cerveza Novac","Cerveza Masha","Wayna Cerveceria","Caciques Cerveceria",
+  "Walnus Cerveceria","TBC Cerveceria","Beet Cerveceria","Pal Rancho Cerveceria",
+  "Viejo Amargo","Paralelo 42","Carpa Boliche Birrafest",
+  "Bierport — Stand","Bierport — Carpa","Jonais — Stand","Jonais — Carpa",
+  "Producción Central"
+];
+
+const BONIF_STANDS = [
+  "Beet Cerveceria","Walnus Cerveceria","Cerveza Novac","Wayna Cerveceria",
+  "Paralelo 42","TBC Cerveceria","Bierport — Stand","Bierport — Carpa",
+  "Caciques Cerveceria","Barbero Cerveceria"
+];
+
+const PRECIO_NORMAL = 2000;
+const PRECIO_BONIF = 1500;
+const UMBRAL_BONIF = 100;
+
+let state = { movimientos: [], ajustes: {}, lastSync: null };
+let currentDay = 1;
+let pendingRemito = null;
+let ajusteStand = null;
+let ajustandoDia = 1;
+
+function loadState(){
+  try{ const s=localStorage.getItem("ecovasos_admin_v1"); if(s) state=JSON.parse(s); }catch(e){}
+  populateHistStands();
+}
+function saveState(){ localStorage.setItem("ecovasos_admin_v1", JSON.stringify(state)); }
+
+function fmt(n){ return Math.round(n).toLocaleString("es-AR"); }
+function fmtM(n){ return "$"+fmt(n); }
+function fmtDate(ts){ return new Date(ts).toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }
+
+function calcMontoBase(stand, vendidos){
+  if(BONIF_STANDS.includes(stand)){
+    return Math.min(vendidos, UMBRAL_BONIF)*PRECIO_BONIF + Math.max(0, vendidos-UMBRAL_BONIF)*PRECIO_NORMAL;
+  }
+  return vendidos * PRECIO_NORMAL;
+}
+
+function getMovsByDay(d){ return d===0?state.movimientos:state.movimientos.filter(m=>m.dia===d); }
+
+function getStandStats(stand, dia){
+  const movs = getMovsByDay(dia).filter(m=>m.stand===stand);
+  const entregado = movs.filter(m=>m.tipo!=="devolucion").reduce((a,m)=>a+(+m.unidades||0),0);
+  const cobradoParcial = movs.filter(m=>m.tipo==="reposicion"&&m.montoCobrado).reduce((a,m)=>a+(+m.montoCobrado||0),0);
+  const devMovs = movs.filter(m=>m.tipo==="devolucion");
+  const devuelto = devMovs.reduce((a,m)=>a+(+m.unidades||0),0);
+  const cobroFinal = devMovs.reduce((a,m)=>a+(+m.montoCobrado||0),0);
+  const vendidos = Math.max(0, entregado - devuelto);
+  const cobradoTotal = cobradoParcial + cobroFinal;
+  const montoBase = calcMontoBase(stand, vendidos);
+  const ajuste = state.ajustes[`${stand}_${dia}`];
+  const montoFinal = ajuste !== undefined ? ajuste : montoBase;
+  const saldo = Math.max(0, montoFinal - cobradoTotal);
+  const liquidado = devMovs.length > 0;
+  return { entregado, devuelto, vendidos, cobradoParcial, cobroFinal, cobradoTotal, montoBase, montoFinal, saldo, liquidado };
+}
+
+function showSection(id){
+  ["dashboard","historial","liquidacion","config"].forEach(s=>{
+    document.getElementById("section-"+s).style.display = s===id?"block":"none";
+  });
+  document.querySelectorAll(".nav-tab").forEach((t,i)=>t.classList.toggle("active",["dashboard","historial","liquidacion","config"][i]===id));
+  if(id==="dashboard") renderDashboard();
+  if(id==="historial") renderHistorial();
+  if(id==="liquidacion") renderLiquidacion();
+}
+
+function setDay(d,btn){
+  currentDay=d;
+  document.querySelectorAll(".day-btn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  renderDashboard();
+}
+
+function renderDashboard(){
+  let totalEntregado=0,totalCobrado=0,totalVendidos=0,totalSaldo=0;
+  STANDS.forEach(s=>{
+    const d=getStandStats(s,currentDay);
+    totalEntregado+=d.entregado; totalCobrado+=d.cobradoTotal;
+    totalVendidos+=d.vendidos; totalSaldo+=d.saldo;
+  });
+  document.getElementById("dash-metrics").innerHTML=`
+    <div class="metric"><div class="metric-label">Vasos entregados</div><div class="metric-value">${fmt(totalEntregado)}</div></div>
+    <div class="metric"><div class="metric-label">Vasos vendidos</div><div class="metric-value amber">${fmt(totalVendidos)}</div></div>
+    <div class="metric"><div class="metric-label">Cobrado</div><div class="metric-value green">${fmtM(totalCobrado)}</div></div>
+    <div class="metric"><div class="metric-label">Saldo pendiente</div><div class="metric-value red">${fmtM(totalSaldo)}</div></div>
+  `;
+
+  const tbody=document.getElementById("dash-tbody");
+  let rows="";
+  STANDS.forEach(stand=>{
+    const d=getStandStats(stand,currentDay);
+    if(d.entregado===0) return;
+    const bonif = BONIF_STANDS.includes(stand);
+    const ajustado = state.ajustes[`${stand}_${currentDay}`] !== undefined;
+    rows+=`<tr>
+      <td><strong>${stand}</strong>${bonif?'<span class="badge teal" style="margin-left:4px">Bonif.</span>':""}${ajustado?'<span class="badge amber" style="margin-left:4px">Ajust.</span>':""}</td>
+      <td>${fmt(d.entregado)}u</td>
+      <td>${fmtM(d.cobradoTotal)}</td>
+      <td>${d.devuelto>0?fmt(d.devuelto)+"u":"—"}</td>
+      <td>${fmt(d.vendidos)}u</td>
+      <td style="color:var(--${d.saldo>0?"red":"green"})">${fmtM(d.saldo)}</td>
+      <td><span class="badge ${d.liquidado?"green":"amber"}">${d.liquidado?"Liquidado":"Pendiente"}</span></td>
+    </tr>`;
+  });
+  tbody.innerHTML=rows||'<tr><td colspan="7" class="text-muted" style="text-align:center;padding:1.5rem">Sin movimientos</td></tr>';
+}
+
+function populateHistStands(){
+  const sel=document.getElementById("hist-stand");
+  if(!sel) return;
+  sel.innerHTML='<option value="">Todos los stands</option>';
+  STANDS.forEach(s=>{ const o=document.createElement("option"); o.value=s; o.textContent=s; sel.appendChild(o); });
+}
+
+function renderHistorial(){
+  const filtroDia=+document.getElementById("hist-dia").value;
+  const filtroTipo=document.getElementById("hist-tipo").value;
+  const filtroStand=document.getElementById("hist-stand").value;
+  let movs=[...state.movimientos].reverse();
+  if(filtroDia) movs=movs.filter(m=>m.dia===filtroDia);
+  if(filtroTipo) movs=movs.filter(m=>m.tipo===filtroTipo);
+  if(filtroStand) movs=movs.filter(m=>m.stand===filtroStand);
+  const tbody=document.getElementById("hist-tbody");
+  const empty=document.getElementById("hist-empty");
+  if(!movs.length){ tbody.innerHTML=""; empty.style.display="block"; return; }
+  empty.style.display="none";
+  const tipoLabel={entrega:"Entrega",reposicion:"Repos.",devolucion:"Devol."};
+  const tipoClass={entrega:"amber",reposicion:"blue",devolucion:"teal"};
+  tbody.innerHTML=movs.map(m=>`<tr>
+    <td class="text-sm">${fmtDate(m.ts||Date.now())}</td>
+    <td>Día ${m.dia}</td>
+    <td><strong>${m.stand}</strong></td>
+    <td><span class="badge ${tipoClass[m.tipo]||"amber"}">${tipoLabel[m.tipo]||m.tipo}</span></td>
+    <td>${fmt(m.unidades||0)}u</td>
+    <td class="text-sm">${m.montoCobrado?fmtM(m.montoCobrado):"—"}</td>
+    <td>${m.firma?`<img src="${m.firma}" style="height:28px;border:0.5px solid var(--border);border-radius:4px;background:#fff">`:"—"}</td>
+    <td><button class="sm" onclick="verRemito(${m.id})" title="Ver remito"><i class="ti ti-file-text"></i></button></td>
+  </tr>`).join("");
+}
+
+function renderLiquidacion(){
+  const dia=+document.getElementById("liq-dia").value;
+  let html="";
+  let totalGeneral=0;
+  let totalCobrado=0;
+  STANDS.forEach(stand=>{
+    const d=getStandStats(stand,dia);
+    if(d.entregado===0) return;
+    const bonif=BONIF_STANDS.includes(stand);
+    const ajustado=state.ajustes[`${stand}_${dia}`]!==undefined;
+    totalGeneral+=d.montoFinal;
+    totalCobrado+=d.cobradoTotal;
+
+    html+=`<div class="card mt-card">
+      <div class="flex justify-between items-center" style="margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
+        <h3>${stand}
+          ${bonif?'<span class="badge teal" style="margin-left:6px">Bonif. auto</span>':""}
+          ${ajustado?'<span class="badge amber" style="margin-left:4px">Ajustado</span>':""}
+        </h3>
+        <div class="flex gap-1 items-center">
+          <span class="badge ${d.liquidado?"green":"amber"}">${d.liquidado?"Liquidado":"Pendiente"}</span>
+          <button class="sm primary" onclick="abrirAjuste('${stand}',${dia})"><i class="ti ti-adjustments"></i> Ajustar</button>
+        </div>
+      </div>
+      <div class="liq-row"><span class="text-muted">Vasos entregados</span><span>${fmt(d.entregado)}</span></div>
+      <div class="liq-row"><span class="text-muted">Vasos devueltos</span><span>${fmt(d.devuelto)}</span></div>
+      <div class="liq-row"><span class="text-muted">Vasos vendidos</span><span><strong>${fmt(d.vendidos)}</strong></span></div>
+      ${bonif?`<div class="liq-row"><span class="text-muted">Precio</span><span>${Math.min(d.vendidos,UMBRAL_BONIF)} u × $${fmt(PRECIO_BONIF)} + ${Math.max(0,d.vendidos-UMBRAL_BONIF)} u × $${fmt(PRECIO_NORMAL)}</span></div>`:`<div class="liq-row"><span class="text-muted">Precio</span><span>${fmt(PRECIO_NORMAL)}/u</span></div>`}
+      <div class="liq-row"><span class="text-muted">Monto base</span><span>${fmtM(d.montoBase)}</span></div>
+      ${ajustado?`<div class="liq-row"><span class="text-muted">Monto ajustado</span><span style="color:var(--amber)">${fmtM(d.montoFinal)}</span></div>`:""}
+      <div class="liq-row"><span class="text-muted">Cobrado parcial</span><span style="color:var(--green)">${fmtM(d.cobradoTotal)}</span></div>
+      <div class="liq-row"><span>Saldo pendiente</span><span style="color:var(--${d.saldo>0?"red":"green"});font-size:16px"><strong>${fmtM(d.saldo)}</strong></span></div>
+    </div>`;
+  });
+
+  if(!html){ html=`<div class="empty-state"><i class="ti ti-building-store"></i><br>Sin movimientos</div>`; }
+  else {
+    html+=`<div class="card mt-card" style="background:var(--amber-bg);border-color:var(--amber)">
+      <div class="flex justify-between items-center flex-wrap gap-1">
+        <div>
+          <h2 style="color:var(--amber-text)">Resumen total</h2>
+          <div class="text-sm" style="color:var(--amber-text);margin-top:2px">Cobrado: ${fmtM(totalCobrado)}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="text-sm" style="color:var(--amber-text)">Total a recaudar</div>
+          <div style="font-size:22px;font-weight:500;color:var(--amber-text)">${fmtM(totalGeneral)}</div>
+          <div class="text-sm" style="color:var(--amber-text)">Saldo: ${fmtM(totalGeneral-totalCobrado)}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+  document.getElementById("liq-list").innerHTML=html;
+}
+
+/* AJUSTE MANUAL */
+function abrirAjuste(stand, dia){
+  ajusteStand=stand; ajustandoDia=dia;
+  const d=getStandStats(stand,dia);
+  document.getElementById("ajuste-stand-name").textContent=stand;
+  const ajusteActual=state.ajustes[`${stand}_${dia}`];
+
+  document.getElementById("ajuste-content").innerHTML=`
+    <div style="margin-bottom:.875rem">
+      <div class="liq-row"><span class="text-muted">Vasos vendidos (calculado)</span><span><strong>${fmt(d.vendidos)}</strong></span></div>
+      <div class="liq-row"><span class="text-muted">Monto base</span><span>${fmtM(d.montoBase)}</span></div>
+      <div class="liq-row"><span class="text-muted">Cobrado hasta ahora</span><span style="color:var(--green)">${fmtM(d.cobradoTotal)}</span></div>
+    </div>
+    <div style="background:var(--bg2);border-radius:var(--radius);padding:.875rem">
+      <div class="text-sm" style="font-weight:500;margin-bottom:.75rem;color:var(--text2)">Ajuste del monto final</div>
+      <div class="form-row">
+        <label>Monto final a cobrar (editable)</label>
+        <input type="number" id="ajuste-monto" value="${ajusteActual !== undefined ? ajusteActual : d.montoBase}" oninput="updateAjustePreview(${d.cobradoTotal})">
+      </div>
+      <div id="ajuste-preview" class="text-sm text-muted" style="margin-top:.25rem"></div>
+      <div style="margin-top:.875rem;padding-top:.875rem;border-top:0.5px solid var(--border)">
+        <div class="text-sm text-muted" style="margin-bottom:.5rem">Referencia rápida</div>
+        <div class="flex gap-1 flex-wrap">
+          <button class="sm" onclick="setAjusteMonto(${d.vendidos * PRECIO_NORMAL})">Todo a $2.000 = ${fmtM(d.vendidos*PRECIO_NORMAL)}</button>
+          <button class="sm" onclick="setAjusteMonto(${d.vendidos * PRECIO_BONIF})">Todo a $1.500 = ${fmtM(d.vendidos*PRECIO_BONIF)}</button>
+          <button class="sm" onclick="setAjusteMonto(${d.montoBase})">Base auto = ${fmtM(d.montoBase)}</button>
+        </div>
+      </div>
+    </div>
+    ${ajusteActual !== undefined ? `<button class="sm danger mt-2" onclick="eliminarAjuste()"><i class="ti ti-refresh"></i> Volver al cálculo automático</button>`:""}
+  `;
+  updateAjustePreview(d.cobradoTotal);
+  document.getElementById("modal-ajuste").classList.add("open");
+}
+
+function setAjusteMonto(v){
+  document.getElementById("ajuste-monto").value=v;
+  const d=getStandStats(ajusteStand,ajustandoDia);
+  updateAjustePreview(d.cobradoTotal);
+}
+
+function updateAjustePreview(cobrado){
+  const monto=+document.getElementById("ajuste-monto").value||0;
+  const saldo=Math.max(0,monto-cobrado);
+  document.getElementById("ajuste-preview").textContent=`Cobrado: ${fmtM(cobrado)} — Saldo pendiente: ${fmtM(saldo)}`;
+}
+
+function guardarAjuste(){
+  const monto=+document.getElementById("ajuste-monto").value;
+  state.ajustes[`${ajusteStand}_${ajustandoDia}`]=monto;
+  saveState();
+  closeModal("modal-ajuste");
+  renderLiquidacion();
+  renderDashboard();
+}
+
+function eliminarAjuste(){
+  delete state.ajustes[`${ajusteStand}_${ajustandoDia}`];
+  saveState();
+  closeModal("modal-ajuste");
+  renderLiquidacion();
+}
+
+/* SYNC desde Sheet */
+async function syncFromSheet(){
+  const msg=document.getElementById("sync-msg");
+  setSyncUI("pend");
+  if(msg) { msg.textContent="Actualizando desde Sheet..."; msg.style.color="var(--amber)"; }
+  try{
+    const resp = await fetch(`${APPS_SCRIPT_URL}?action=getAll`);
+    if(!resp.ok) throw new Error("No response");
+    const data = await resp.json();
+    if(data && data.movimientos && Array.isArray(data.movimientos)){
+      const existingIds = new Set(state.movimientos.map(m=>m.id));
+      let nuevos=0;
+      data.movimientos.forEach(m=>{
+        if(!existingIds.has(m.id)){
+          state.movimientos.push(m);
+          nuevos++;
+        }
+      });
+      state.lastSync=Date.now();
+      saveState();
+      setSyncUI("ok");
+      if(msg){ msg.textContent=`✓ Sincronizado — ${nuevos} movimientos nuevos`; msg.style.color="var(--green)"; }
+      renderDashboard();
+      renderHistorial();
+    } else {
+      throw new Error("Formato inesperado");
+    }
+  } catch(e){
+    setSyncUI("off");
+    if(msg){ msg.textContent="⚠ No se pudo conectar. Verificá la conexión o el Apps Script."; msg.style.color="var(--red)"; }
+  }
+}
+
+function setSyncUI(s){
+  const p=document.getElementById("sync-pill");
+  const i=document.getElementById("sync-icon");
+  const t=document.getElementById("sync-text");
+  if(s==="ok"){p.className="sync-pill ok";i.className="ti ti-cloud-check";t.textContent="Sincronizado";}
+  else if(s==="pend"){p.className="sync-pill pend";i.className="ti ti-cloud-upload";t.textContent="Actualizando...";}
+  else{p.className="sync-pill off";i.className="ti ti-cloud-off";t.textContent="Offline";}
+}
+
+/* REMITO */
+function verRemito(id){
+  const mov=state.movimientos.find(m=>m.id===id);
+  if(!mov) return;
+  pendingRemito=mov;
+  const tipoLabel={entrega:"Entrega inicial",reposicion:"Reposición + Cobro",devolucion:"Devolución al cierre"};
+  const tipoClass={entrega:"amber",reposicion:"blue",devolucion:"teal"};
+  let detalleHTML="";
+  if(mov.tipo==="reposicion"){
+    detalleHTML=`<div class="liq-row"><span class="text-muted">Cobro efectivo</span><span style="color:var(--green)">${fmtM(mov.montoCobrado||0)}</span></div>
+    <div class="liq-row"><span class="text-muted">Nueva entrega</span><span>${fmt(mov.unidades||0)} vasos</span></div>`;
+  } else if(mov.tipo==="devolucion"){
+    detalleHTML=`<div class="liq-row"><span class="text-muted">Vasos devueltos</span><span>${fmt(mov.unidades||0)}</span></div>
+    <div class="liq-row"><span class="text-muted">Vasos vendidos</span><span>${fmt(mov.vendidos||0)}</span></div>
+    <div class="liq-row"><span class="text-muted">Cobro final</span><span style="color:var(--green)">${fmtM(mov.montoCobrado||0)}</span></div>`;
+  } else {
+    detalleHTML=`<div class="liq-row"><span class="text-muted">Vasos entregados</span><span>${fmt(mov.unidades||0)}</span></div>`;
+  }
+  document.getElementById("remito-preview").innerHTML=`
+    <div style="border:0.5px solid var(--border);border-radius:var(--radius);padding:1.25rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+        <div><strong>BirraFest VII — Ecovasos</strong><br><span class="text-sm text-muted">Remito N° ${mov.id}</span></div>
+        <div style="text-align:right"><span class="badge ${tipoClass[mov.tipo]||"amber"}">${tipoLabel[mov.tipo]||mov.tipo}</span><br><span class="text-sm text-muted">${fmtDate(mov.ts||Date.now())}</span></div>
+      </div>
+      <div class="liq-row"><span class="text-muted">Stand</span><strong>${mov.stand}</strong></div>
+      <div class="liq-row"><span class="text-muted">Día</span><span>Día ${mov.dia}</span></div>
+      ${detalleHTML}
+      ${mov.notas?`<div class="liq-row"><span class="text-muted">Notas</span><span>${mov.notas}</span></div>`:""}
+      ${mov.whatsapp?`<div class="liq-row"><span class="text-muted">WhatsApp</span><span>+54 9 ${mov.whatsapp}</span></div>`:""}
+      <div style="margin-top:1rem;border-top:0.5px solid var(--border);padding-top:.875rem">
+        <div class="text-sm text-muted" style="margin-bottom:.4rem">Firma del expositor</div>
+        ${mov.firma?`<img src="${mov.firma}" style="max-width:100%;height:70px;border:0.5px solid var(--border);border-radius:var(--radius);background:#fff">`:`<span class="text-muted text-sm">Firma guardada en dispositivo del encargado</span>`}
+      </div>
+    </div>`;
+  document.getElementById("modal-remito").classList.add("open");
+}
+
+function descargarPDF(){
+  if(!pendingRemito) return;
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:"mm",format:"a5"});
+  const mov=pendingRemito;
+  const tipoLabel={entrega:"Entrega inicial",reposicion:"Reposición + Cobro",devolucion:"Devolución al cierre"};
+  doc.setFontSize(13); doc.setFont(undefined,"bold"); doc.text("BirraFest VII — Ecovasos",15,18);
+  doc.setFontSize(9); doc.setFont(undefined,"normal"); doc.text(`Remito N° ${mov.id}`,15,24);
+  doc.setFontSize(10); doc.setFont(undefined,"bold"); doc.text(tipoLabel[mov.tipo]||mov.tipo,133,18,{align:"right"});
+  doc.setFontSize(9); doc.setFont(undefined,"normal"); doc.text(fmtDate(mov.ts||Date.now()),133,24,{align:"right"});
+  doc.setDrawColor(200); doc.line(15,27,133,27);
+  const rows=[["Stand",mov.stand],["Día",`Día ${mov.dia}`]];
+  if(mov.tipo==="reposicion"){ rows.push(["Cobro efectivo",fmtM(mov.montoCobrado||0)]); rows.push(["Nueva entrega",`${fmt(mov.unidades||0)} vasos`]); }
+  else if(mov.tipo==="devolucion"){ rows.push(["Vasos devueltos",`${fmt(mov.unidades||0)} u`]); rows.push(["Vasos vendidos",`${fmt(mov.vendidos||0)} u`]); rows.push(["Cobro final",fmtM(mov.montoCobrado||0)]); }
+  else{ rows.push(["Vasos entregados",`${fmt(mov.unidades||0)} u`]); }
+  if(mov.notas) rows.push(["Notas",mov.notas]);
+  let y=35;
+  rows.forEach(([k,v])=>{ doc.setFont(undefined,"normal"); doc.setTextColor(120); doc.text(k,15,y); doc.setFont(undefined,"bold"); doc.setTextColor(30); doc.text(v,60,y); y+=8; });
+  doc.setDrawColor(200); doc.line(15,y+2,133,y+2); y+=10;
+  if(mov.firma){ doc.setFontSize(9); doc.setFont(undefined,"normal"); doc.setTextColor(120); doc.text("Firma del expositor:",15,y); y+=4; try{ doc.addImage(mov.firma,"PNG",15,y,70,25); y+=29; }catch(e){} doc.setDrawColor(180); doc.line(15,y+4,85,y+4); doc.setFontSize(8); doc.setTextColor(150); doc.text("Aclaración",15,y+9); }
+  doc.save(`remito_${mov.stand.replace(/[\s—]+/g,"_")}_${mov.id}.pdf`);
+}
+
+function enviarWhatsApp(){
+  if(!pendingRemito) return;
+  const mov=pendingRemito;
+  const tipoLabel={entrega:"Entrega inicial",reposicion:"Reposición + Cobro",devolucion:"Devolución al cierre"};
+  let detalle="";
+  if(mov.tipo==="reposicion") detalle=`*Cobro:* ${fmtM(mov.montoCobrado||0)}\n*Nueva entrega:* ${fmt(mov.unidades||0)} vasos`;
+  else if(mov.tipo==="devolucion") detalle=`*Vendidos:* ${fmt(mov.vendidos||0)} vasos\n*Cobro final:* ${fmtM(mov.montoCobrado||0)}`;
+  else detalle=`*Vasos entregados:* ${fmt(mov.unidades||0)}`;
+  const texto=`*BirraFest VII — Ecovasos*\nRemito N° ${mov.id}\n${tipoLabel[mov.tipo]||mov.tipo} — Día ${mov.dia}\n*Stand:* ${mov.stand}\n${detalle}\n_${fmtDate(mov.ts||Date.now())}_`;
+  const encoded=encodeURIComponent(texto);
+  window.open(mov.whatsapp?`https://wa.me/549${mov.whatsapp}?text=${encoded}`:`https://wa.me/?text=${encoded}`);
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+
+function exportarJSON(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=`ecovasos_admin_${Date.now()}.json`; a.click();
+}
+function resetData(){ state.movimientos=[]; state.ajustes={}; saveState(); renderDashboard(); }
+
+window.addEventListener("DOMContentLoaded",()=>{
+  loadState(); renderDashboard();
+  setSyncUI(navigator.onLine?"off":"off");
+  if(navigator.onLine) syncFromSheet();
+});
+</script>
+</body>
+</html>
